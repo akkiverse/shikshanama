@@ -26,6 +26,74 @@ const SECTION_HEADING_KEYS: [string, string][] = [
   ["demo", "Free Demo Class Form"],
 ];
 
+const ImageAttachmentPreview: React.FC<{
+  url: string;
+  kind: string;
+  aspectRatio?: "1/1" | "4/5" | "16/9";
+  onChange: () => void;
+  onRemove?: () => void;
+}> = ({ url, kind, aspectRatio = "1/1", onChange, onRemove }) => {
+  const is169 = aspectRatio === "16/9";
+  const is45 = aspectRatio === "4/5";
+  const w = is169 ? "120px" : is45 ? "64px" : "68px";
+  const h = is169 ? "68px" : is45 ? "80px" : "68px";
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "1rem",
+        padding: "0.75rem 1rem",
+        background: "var(--surface)",
+        border: "1px solid var(--accent)",
+        borderRadius: "var(--border-radius)",
+        boxShadow: "var(--shadow-card)",
+      }}
+    >
+      <img
+        src={url}
+        alt="Cropped Preview"
+        style={{
+          width: w,
+          height: h,
+          objectFit: "cover",
+          borderRadius: "6px",
+          border: "2px solid var(--accent)",
+        }}
+      />
+      <div style={{ flex: 1 }}>
+        <div style={{ fontWeight: 700, color: "var(--accent)", fontSize: "0.9rem" }}>
+          ✓ {kind} Attached & Ready
+        </div>
+        <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", marginTop: "0.15rem" }}>
+          Photo uploaded. Complete details below and click Save to publish.
+        </div>
+      </div>
+      <div style={{ display: "flex", gap: "0.5rem" }}>
+        <button
+          type="button"
+          className="mobile-menu-btn"
+          style={{ display: "inline-flex", fontSize: "0.8rem" }}
+          onClick={onChange}
+        >
+          Change
+        </button>
+        {onRemove && (
+          <button
+            type="button"
+            className="mobile-menu-btn"
+            style={{ display: "inline-flex", fontSize: "0.8rem", color: "#f87171" }}
+            onClick={onRemove}
+          >
+            Remove
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const AdminApp: React.FC = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState<{ id: number; email: string } | null>(null);
@@ -55,6 +123,7 @@ export const AdminApp: React.FC = () => {
 
   const [tab, setTab] = useState<AdminTab>(initialTab);
   const [toast, setToast] = useState<string>("");
+  const [lastUploaded, setLastUploaded] = useState<{ url: string; kind: CropKind; timestamp: number } | null>(null);
   const [cropperTarget, setCropperTarget] = useState<{
     kind: CropKind;
     onDone: (url: string) => void;
@@ -372,8 +441,10 @@ export const AdminApp: React.FC = () => {
           kind={cropperTarget.kind}
           csrfToken={csrfToken}
           onUploaded={(url) => {
+            setLastUploaded({ url, kind: cropperTarget.kind, timestamp: Date.now() });
             cropperTarget.onDone(url);
             setCropperTarget(null);
+            setToast("✓ Photo cropped & uploaded successfully! Attached to form below. Click Save to publish.");
           }}
           onCancel={() => setCropperTarget(null)}
         />
@@ -469,6 +540,110 @@ export const AdminApp: React.FC = () => {
               <div className="bento-card">
                 <div style={{ color: "var(--text-secondary)", fontSize: "0.85rem" }}>Active Batches</div>
                 <div style={{ fontSize: "2rem", fontWeight: 800 }}>{dashboard.total_batches}</div>
+              </div>
+            </div>
+
+            {/* Live Media & Upload Verification Card */}
+            <div className="bento-card" style={{ borderTop: "3px solid var(--accent)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                <div>
+                  <h3 style={{ margin: "0 0 0.25rem" }}>📸 Stored Media & Photos Verification</h3>
+                  <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                    Verify photos currently active in the database for Founders, Results, Hero Banner, and Gallery.
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <button type="button" className="btn-secondary" style={{ fontSize: "0.82rem", padding: "0.35rem 0.75rem" }} onClick={() => switchTab("founders")}>
+                    + Add Founder
+                  </button>
+                  <button type="button" className="btn-secondary" style={{ fontSize: "0.82rem", padding: "0.35rem 0.75rem" }} onClick={() => switchTab("results")}>
+                    + Add Result
+                  </button>
+                  <button type="button" className="btn-secondary" style={{ fontSize: "0.82rem", padding: "0.35rem 0.75rem" }} onClick={() => switchTab("homepage")}>
+                    Hero Banner
+                  </button>
+                </div>
+              </div>
+
+              {lastUploaded && (
+                <div style={{ marginTop: "1rem", padding: "0.85rem", background: "rgba(201, 162, 39, 0.12)", border: "1px solid var(--accent)", borderRadius: "var(--border-radius)", display: "flex", alignItems: "center", gap: "1rem" }}>
+                  <img src={lastUploaded.url} alt="Latest upload" style={{ width: "64px", height: "64px", objectFit: "cover", borderRadius: "6px", border: "2px solid var(--accent)" }} />
+                  <div>
+                    <strong style={{ color: "var(--accent)", display: "block" }}>✓ Latest Photo Uploaded Successfully</strong>
+                    <div style={{ fontSize: "0.82rem", color: "var(--text)" }}>
+                      Type: <strong>{lastUploaded.kind.toUpperCase()}</strong> · <a href={lastUploaded.url} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", fontWeight: 600 }}>Open Direct Image ↗</a>
+                    </div>
+                    <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+                      Remember to complete the form details and click Save in its tab to publish.
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Photos Overview Grid */}
+              <div style={{ marginTop: "1rem", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "1rem" }}>
+                {/* Founders Photos */}
+                <div style={{ padding: "0.85rem", background: "var(--bg)", borderRadius: "var(--border-radius)", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                    <strong style={{ fontSize: "0.88rem" }}>Founders ({founders.length})</strong>
+                    <button type="button" onClick={() => switchTab("founders")} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600 }}>
+                      Manage →
+                    </button>
+                  </div>
+                  {founders.length === 0 ? (
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>No founders uploaded yet.</div>
+                  ) : (
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {founders.map((f) => (
+                        <div key={f.id} style={{ textAlign: "center" }}>
+                          <img src={f.photo_url} alt={f.name} style={{ width: "52px", height: "65px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border)" }} />
+                          <div style={{ fontSize: "0.72rem", maxWidth: "56px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.name}</div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Hero Banner */}
+                <div style={{ padding: "0.85rem", background: "var(--bg)", borderRadius: "var(--border-radius)", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                    <strong style={{ fontSize: "0.88rem" }}>Hero Banner (16:9)</strong>
+                    <button type="button" onClick={() => switchTab("homepage")} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600 }}>
+                      Manage →
+                    </button>
+                  </div>
+                  {settings?.hero_image_url ? (
+                    <div>
+                      <img src={settings.hero_image_url} alt="Hero Banner" style={{ width: "100%", maxHeight: "85px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border)" }} />
+                      <div style={{ fontSize: "0.75rem", color: "var(--accent)", marginTop: "0.25rem" }}>✓ Active on Homepage</div>
+                    </div>
+                  ) : (
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>No custom 16:9 banner set.</div>
+                  )}
+                </div>
+
+                {/* Achievers / Results */}
+                <div style={{ padding: "0.85rem", background: "var(--bg)", borderRadius: "var(--border-radius)", border: "1px solid var(--border)" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                    <strong style={{ fontSize: "0.88rem" }}>Toppers & Achievers ({results.length})</strong>
+                    <button type="button" onClick={() => switchTab("results")} style={{ background: "none", border: "none", color: "var(--accent)", fontSize: "0.78rem", cursor: "pointer", fontWeight: 600 }}>
+                      Manage →
+                    </button>
+                  </div>
+                  {results.length === 0 ? (
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-muted)" }}>No results uploaded yet.</div>
+                  ) : (
+                    <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                      {results.slice(0, 6).map((r) => (
+                        <div key={r.id} style={{ textAlign: "center" }}>
+                          <img src={r.photo_url} alt={r.name} style={{ width: "52px", height: "52px", objectFit: "cover", borderRadius: "6px", border: "1px solid var(--border)" }} />
+                          <div style={{ fontSize: "0.72rem", maxWidth: "56px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.name}</div>
+                        </div>
+                      ))}
+                      {results.length > 6 && <div style={{ fontSize: "0.8rem", color: "var(--text-muted)", alignSelf: "center" }}>+{results.length - 6} more</div>}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -709,11 +884,42 @@ export const AdminApp: React.FC = () => {
                   value={settings.ticker_link}
                   onChange={(e) => setSettings((p: any) => ({ ...p, ticker_link: e.target.value }))}
                 />
-                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                {settings.hero_image_url ? (
+                  <div style={{ display: "grid", gap: "0.65rem" }}>
+                    <ImageAttachmentPreview
+                      url={settings.hero_image_url}
+                      kind="16:9 Hero Banner"
+                      aspectRatio="16/9"
+                      onChange={() =>
+                        setCropperTarget({
+                          kind: "banner",
+                          onDone: (url) => setSettings((p: any) => ({ ...p, hero_image_url: url })),
+                        })
+                      }
+                      onRemove={() => setSettings((p: any) => ({ ...p, hero_image_url: "" }))}
+                    />
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      style={{ width: "fit-content" }}
+                      onClick={async () => {
+                        try {
+                          await adminFetch("/api/admin/settings", "PUT", settings);
+                          setToast("✓ Homepage 16:9 Hero Banner and Ticker saved successfully!");
+                          loadAllAdminData();
+                        } catch (err: any) {
+                          setToast(err.message);
+                        }
+                      }}
+                    >
+                      Save Hero Banner & Ticker Now
+                    </button>
+                  </div>
+                ) : (
                   <button
                     type="button"
-                    className="mobile-menu-btn"
-                    style={{ display: "inline-flex" }}
+                    className="btn-secondary"
+                    style={{ width: "fit-content" }}
                     onClick={() =>
                       setCropperTarget({
                         kind: "banner",
@@ -721,19 +927,9 @@ export const AdminApp: React.FC = () => {
                       })
                     }
                   >
-                    {settings.hero_image_url ? "Replace 16:9 Hero Banner" : "Upload 16:9 Hero Banner"}
+                    📷 Upload & Crop 16:9 Hero Banner
                   </button>
-                  {settings.hero_image_url && (
-                    <button
-                      type="button"
-                      className="mobile-menu-btn"
-                      style={{ display: "inline-flex", color: "#f87171" }}
-                      onClick={() => setSettings((p: any) => ({ ...p, hero_image_url: "" }))}
-                    >
-                      Remove Banner
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
             </div>
 
@@ -1485,11 +1681,24 @@ export const AdminApp: React.FC = () => {
                   value={newResult.parent_whatsapp}
                   onChange={(e) => setNewResult((p) => ({ ...p, parent_whatsapp: e.target.value }))}
                 />
-                <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
+                {newResult.photo_url ? (
+                  <ImageAttachmentPreview
+                    url={newResult.photo_url}
+                    kind="1:1 Achiever"
+                    aspectRatio="1/1"
+                    onChange={() =>
+                      setCropperTarget({
+                        kind: "result",
+                        onDone: (url) => setNewResult((p) => ({ ...p, photo_url: url })),
+                      })
+                    }
+                    onRemove={() => setNewResult((p) => ({ ...p, photo_url: "" }))}
+                  />
+                ) : (
                   <button
                     type="button"
-                    className="mobile-menu-btn"
-                    style={{ display: "inline-flex" }}
+                    className="btn-secondary"
+                    style={{ width: "fit-content" }}
                     onClick={() =>
                       setCropperTarget({
                         kind: "result",
@@ -1497,9 +1706,9 @@ export const AdminApp: React.FC = () => {
                       })
                     }
                   >
-                    {newResult.photo_url ? "✓ 1:1 Photo Cropped" : "Upload & Crop 1:1 Photo *"}
+                    📷 Upload & Crop 1:1 Photo *
                   </button>
-                </div>
+                )}
                 <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                   <input
                     type="checkbox"
@@ -1717,19 +1926,33 @@ export const AdminApp: React.FC = () => {
                         value={editingResult.parent_whatsapp}
                         onChange={(e) => setEditingResult((p: any) => ({ ...p, parent_whatsapp: e.target.value }))}
                       />
-                      <button
-                        type="button"
-                        className="mobile-menu-btn"
-                        style={{ display: "inline-flex" }}
-                        onClick={() =>
-                          setCropperTarget({
-                            kind: "result",
-                            onDone: (url) => setEditingResult((p: any) => ({ ...p, photo_url: url })),
-                          })
-                        }
-                      >
-                        Replace 1:1 Photo
-                      </button>
+                      {editingResult.photo_url ? (
+                        <ImageAttachmentPreview
+                          url={editingResult.photo_url}
+                          kind="1:1 Achiever"
+                          aspectRatio="1/1"
+                          onChange={() =>
+                            setCropperTarget({
+                              kind: "result",
+                              onDone: (url) => setEditingResult((p: any) => ({ ...p, photo_url: url })),
+                            })
+                          }
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          className="mobile-menu-btn"
+                          style={{ display: "inline-flex" }}
+                          onClick={() =>
+                            setCropperTarget({
+                              kind: "result",
+                              onDone: (url) => setEditingResult((p: any) => ({ ...p, photo_url: url })),
+                            })
+                          }
+                        >
+                          Upload 1:1 Photo
+                        </button>
+                      )}
                       <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                         <input
                           type="checkbox"
@@ -1794,19 +2017,34 @@ export const AdminApp: React.FC = () => {
                   value={newFounder.vision}
                   onChange={(e) => setNewFounder((p) => ({ ...p, vision: e.target.value }))}
                 />
-                <button
-                  type="button"
-                  className="mobile-menu-btn"
-                  style={{ display: "inline-flex", width: "fit-content" }}
-                  onClick={() =>
-                    setCropperTarget({
-                      kind: "founder",
-                      onDone: (url) => setNewFounder((p) => ({ ...p, photo_url: url })),
-                    })
-                  }
-                >
-                  {newFounder.photo_url ? "✓ 4:5 Portrait Cropped" : "Upload & Crop 4:5 Portrait *"}
-                </button>
+                {newFounder.photo_url ? (
+                  <ImageAttachmentPreview
+                    url={newFounder.photo_url}
+                    kind="4:5 Founder Portrait"
+                    aspectRatio="4/5"
+                    onChange={() =>
+                      setCropperTarget({
+                        kind: "founder",
+                        onDone: (url) => setNewFounder((p) => ({ ...p, photo_url: url })),
+                      })
+                    }
+                    onRemove={() => setNewFounder((p) => ({ ...p, photo_url: "" }))}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ width: "fit-content" }}
+                    onClick={() =>
+                      setCropperTarget({
+                        kind: "founder",
+                        onDone: (url) => setNewFounder((p) => ({ ...p, photo_url: url })),
+                      })
+                    }
+                  >
+                    📷 Upload & Crop 4:5 Portrait *
+                  </button>
+                )}
                 <button type="submit" className="btn-primary">
                   Save Founder
                 </button>
@@ -1903,6 +2141,19 @@ export const AdminApp: React.FC = () => {
                       onChange={(e) => setEditingFounder((p: any) => ({ ...p, vision: e.target.value }))}
                     />
                     <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                    {editingFounder.photo_url ? (
+                      <ImageAttachmentPreview
+                        url={editingFounder.photo_url}
+                        kind="4:5 Founder Portrait"
+                        aspectRatio="4/5"
+                        onChange={() =>
+                          setCropperTarget({
+                            kind: "founder",
+                            onDone: (url) => setEditingFounder((p: any) => ({ ...p, photo_url: url })),
+                          })
+                        }
+                      />
+                    ) : (
                       <button
                         type="button"
                         className="mobile-menu-btn"
@@ -1914,8 +2165,9 @@ export const AdminApp: React.FC = () => {
                           })
                         }
                       >
-                        Replace 4:5 Portrait
+                        Upload 4:5 Portrait
                       </button>
+                    )}
                       <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                         <input
                           type="checkbox"
@@ -1972,19 +2224,34 @@ export const AdminApp: React.FC = () => {
                   <option value="Student">Student</option>
                   <option value="Parent">Parent</option>
                 </select>
-                <button
-                  type="button"
-                  className="mobile-menu-btn"
-                  style={{ display: "inline-flex", width: "fit-content" }}
-                  onClick={() =>
-                    setCropperTarget({
-                      kind: "testimonial",
-                      onDone: (url) => setNewTestimonial((p) => ({ ...p, photo_url: url })),
-                    })
-                  }
-                >
-                  {newTestimonial.photo_url ? "✓ 1:1 Photo Cropped" : "Optional 1:1 Photo"}
-                </button>
+                {newTestimonial.photo_url ? (
+                  <ImageAttachmentPreview
+                    url={newTestimonial.photo_url}
+                    kind="1:1 Testimonial"
+                    aspectRatio="1/1"
+                    onChange={() =>
+                      setCropperTarget({
+                        kind: "testimonial",
+                        onDone: (url) => setNewTestimonial((p) => ({ ...p, photo_url: url })),
+                      })
+                    }
+                    onRemove={() => setNewTestimonial((p) => ({ ...p, photo_url: "" }))}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ width: "fit-content" }}
+                    onClick={() =>
+                      setCropperTarget({
+                        kind: "testimonial",
+                        onDone: (url) => setNewTestimonial((p) => ({ ...p, photo_url: url })),
+                      })
+                    }
+                  >
+                    Optional 1:1 Photo
+                  </button>
+                )}
                 <button type="submit" className="btn-primary">
                   Save Testimonial
                 </button>
@@ -2114,19 +2381,34 @@ export const AdminApp: React.FC = () => {
                   value={newGallery.caption}
                   onChange={(e) => setNewGallery((p) => ({ ...p, caption: e.target.value }))}
                 />
-                <button
-                  type="button"
-                  className="mobile-menu-btn"
-                  style={{ display: "inline-flex", width: "fit-content" }}
-                  onClick={() =>
-                    setCropperTarget({
-                      kind: "gallery",
-                      onDone: (url) => setNewGallery((p) => ({ ...p, image_url: url })),
-                    })
-                  }
-                >
-                  {newGallery.image_url ? "✓ 16:9 Image Cropped" : "Upload & Crop 16:9 Photo *"}
-                </button>
+                {newGallery.image_url ? (
+                  <ImageAttachmentPreview
+                    url={newGallery.image_url}
+                    kind="16:9 Gallery"
+                    aspectRatio="16/9"
+                    onChange={() =>
+                      setCropperTarget({
+                        kind: "gallery",
+                        onDone: (url) => setNewGallery((p) => ({ ...p, image_url: url })),
+                      })
+                    }
+                    onRemove={() => setNewGallery((p) => ({ ...p, image_url: "" }))}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    style={{ width: "fit-content" }}
+                    onClick={() =>
+                      setCropperTarget({
+                        kind: "gallery",
+                        onDone: (url) => setNewGallery((p) => ({ ...p, image_url: url })),
+                      })
+                    }
+                  >
+                    📷 Upload & Crop 16:9 Photo *
+                  </button>
+                )}
                 <button type="submit" className="btn-primary">
                   Save Gallery Photo
                 </button>
