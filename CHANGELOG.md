@@ -5,6 +5,9 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **CR-0002:** Updated `pyproject.toml`, `requirements.txt`, and `uv.lock` to resolve `psycopg-binary` (`3.3.6`) and `pillow` (`12.x`) wheels compatible with Vercel's CPython 3.14 (`cp314`) runtime (`AC-19.2`).
+
 ### Added
 - **CR-0001:** Initial build of the Shikshanama (`शिक्षाNama`) mobile-first Gen-Z coaching website and full-featured Admin CMS (`/admin`) (`AC-1.1`–`AC-23.5`).
   - Public modules: Top Announcement Ticker, Sticky Blurred Navbar with Light/Dark theme toggle, Hero with `शिक्षाNama` branding & count-up trust counters, Filterable Hall of Fame (`/results`), Stream Courses & Live Upcoming Batches (`/courses`), Founders & Leadership (`/founders`), Multi-Branch Locator pre-seeded with West Patel Nagar Flagship (`/branches`), Testimonials Marquee, 16:9 Lightbox Gallery, Instagram Hub (`@shikshanamaofficial`), Floating WhatsApp/Call dock, and Book a Free Demo lead capture with `+91` validation, honeypot, and rate limiting.
