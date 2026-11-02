@@ -13,7 +13,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 import pytest
 
-from app.database import FLAGSHIP_ADDRESS, FLAGSHIP_NAME, IST, init_and_seed_db
+from app.database import FLAGSHIP_ADDRESS, FLAGSHIP_NAME, IST, get_db, init_and_seed_db
 from app.imaging import generate_sample_webp
 from app.main import app
 from app.security import clear_runtime_memory, create_consent_token, hash_password
@@ -879,3 +879,83 @@ def test_cr_0003_demo_mode_false_and_inline_edit_reorder(client: TestClient, mon
     assert all(b["is_flagship"] or not b["is_sample"] for b in boot["branches"])
     # Courses remain available
     assert len(boot["courses"]) >= 4
+
+
+def test_ac_3_9_approved_consent_reflects_in_public_results_even_when_is_sample(client: TestClient, monkeypatch: Any) -> None:
+    """When parent consent is approved (online or paper), the topper is immediately published and visible even in DEMO_MODE=false."""
+    monkeypatch.setenv("DEMO_MODE", "false")
+    csrf = _admin_login(client)
+
+    with get_db() as db:
+        # Pick or create a sample result whose consent was Not requested
+        res = db.fetchone("SELECT id FROM results LIMIT 1")
+        assert res is not None
+        rid = int(res["id"])
+        # Set to sample
+        db.execute("UPDATE results SET is_sample = 1 WHERE id = ?", (rid,))
+        db.execute("UPDATE consents SET status = 'Not requested' WHERE result_id = ?", (rid,))
+
+    # Before consent, in DEMO_MODE=false, the result is hidden from public results
+    pub_before = client.get("/api/public/results").json()["results"]
+    assert not any(r["id"] == rid for r in pub_before)
+
+    # Approve paper consent
+    paper_res = client.post(
+        f"/api/admin/results/{rid}/paper-consent",
+        json={"staff_name": "Teacher Rekha", "parent_name": "Suresh Kumar"},
+        headers={"x-csrf-token": csrf},
+    )
+    assert paper_res.status_code == 200
+
+    # Verify is_sample is 0 and published is 1
+    with get_db() as db:
+        r_row = db.fetchone("SELECT is_sample, published, pinned FROM results WHERE id = ?", (rid,))
+        assert r_row["is_sample"] == 0
+        assert r_row["published"] == 1
+        assert r_row["pinned"] == 1
+
+    # Verify public results now includes the approved topper
+    pub_after = client.get("/api/public/results").json()["results"]
+    assert any(r["id"] == rid for r in pub_after)
+
+
+def test_ac_6_5_branch_address_update_instant_cache_and_flagship_sanitization(client: TestClient, monkeypatch: Any) -> None:
+    """Updating branch address reflects immediately on public bootstrap with no-cache headers and sanitizes (Flagship) label."""
+    monkeypatch.setenv("DEMO_MODE", "false")
+    csrf = _admin_login(client)
+
+    # 1. Verify Cache-Control is no-cache on public bootstrap & results
+    resp = client.get("/api/public/bootstrap")
+    assert resp.status_code == 200
+    assert "no-cache" in resp.headers.get("cache-control", "")
+
+    resp_res = client.get("/api/public/results")
+    assert resp_res.status_code == 200
+    assert "no-cache" in resp_res.headers.get("cache-control", "")
+
+    # 2. Update branch address via admin
+    branches = client.get("/api/admin/branches", headers={"x-csrf-token": csrf}).json()["branches"]
+    b0 = branches[0]
+    new_street = "Shop 12, Block C, Patel Road, West Patel Nagar, New Delhi - 110008"
+    up_resp = client.put(
+        f"/api/admin/branches/{b0['id']}",
+        json={
+            "name": b0["name"] + " (Flagship)",  # User or seed had Flagship suffix
+            "address": new_street + " (Flagship)",
+            "maps_url": "",  # Auto-regenerate
+            "phone": b0["phone"] or "+91 98100 11111",
+            "whatsapp": b0["whatsapp"] or "+91 98100 11111",
+            "is_flagship": True,
+            "active": True,
+        },
+        headers={"x-csrf-token": csrf},
+    )
+    assert up_resp.status_code == 200
+
+    # 3. Check public bootstrap returns the clean address without (Flagship)
+    pub_boot = client.get("/api/public/bootstrap").json()
+    pub_b0 = next(b for b in pub_boot["branches"] if b["id"] == b0["id"])
+    assert pub_b0["address"] == new_street
+    assert "(Flagship)" not in pub_b0["name"]
+    assert "(Flagship)" not in pub_b0["address"]
+    assert "Patel+Road" in pub_b0["maps_url"] or "Shop+12" in pub_b0["maps_url"]

@@ -176,7 +176,7 @@ def _fetch_public_results(
     )
     filtered: list[dict[str, Any]] = []
     for r in rows:
-        if not demo_mode and int(r["is_sample"]):
+        if not demo_mode and int(r["is_sample"]) and r["consent_status"] == "Given (sample)":
             continue
         if class_filter and class_filter.lower() != "all" and str(r["class_name"]).lower() != class_filter.lower():
             continue
@@ -219,18 +219,20 @@ def _fetch_public_branches(db: Any) -> list[dict[str, Any]]:
     for b in rows:
         if not demo_mode and int(b["is_sample"]) and not int(b["is_flagship"]):
             continue
+        clean_name = re.sub(r"\s*\([Ff]lagship\)", "", b["name"]).strip()
+        clean_address = re.sub(r"\s*\([Ff]lagship\)", "", b["address"]).strip()
         maps_url = (b["maps_url"] or "").strip()
-        if not maps_url:
-            maps_url = "https://www.google.com/maps/search/?api=1&query=" + urllib.parse.quote_plus(b["address"])
+        if not maps_url or "google.com/maps/search/?api=1&query=" in maps_url:
+            maps_url = "https://www.google.com/maps/search/?api=1&query=" + urllib.parse.quote_plus(clean_address)
         wa_digits = digits_for_wa(b["whatsapp"] or b["phone"])
         wa_msg = urllib.parse.quote(
-            f"Hi Shikshanama (शिक्षाNama)! I have an enquiry regarding the {b['name']} branch."
+            f"Hi Shikshanama (शिक्षाNama)! I have an enquiry regarding the {clean_name} branch."
         )
         out.append(
             {
                 "id": int(b["id"]),
-                "name": b["name"],
-                "address": b["address"],
+                "name": clean_name,
+                "address": clean_address,
                 "maps_url": maps_url,
                 "phone": b["phone"],
                 "tel_url": f"tel:{b['phone']}" if b["phone"] else "",
@@ -262,7 +264,7 @@ def _fetch_public_batches(db: Any, settings: dict[str, Any]) -> list[dict[str, A
         if not _is_batch_within_window(b["start_date"]):
             continue
         formatted_date = _format_batch_date(b["start_date"])
-        branch_name = b.get("branch_name") or "West Patel Nagar (Flagship)"
+        branch_name = b.get("branch_name") or "West Patel Nagar"
         wa_raw = b.get("branch_whatsapp") or b.get("branch_phone") or settings.get("global_whatsapp", "")
         wa_digits = digits_for_wa(wa_raw)
         enroll_text = (
@@ -421,7 +423,7 @@ def api_public_bootstrap(
     year: str | None = Query(default=None),
 ) -> dict[str, Any]:
     _ensure_ready()
-    response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=120"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     with get_db() as db:
         return _fetch_public_payload(db, class_filter=class_name, stream_filter=stream, year_filter=year)
 
@@ -435,7 +437,7 @@ def api_public_results(
     pinned_only: bool = Query(default=False),
 ) -> dict[str, Any]:
     _ensure_ready()
-    response.headers["Cache-Control"] = "public, s-maxage=60, stale-while-revalidate=120"
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     with get_db() as db:
         items = _fetch_public_results(
             db,
@@ -671,6 +673,14 @@ async def api_public_submit_consent(token: str, request: Request) -> dict[str, A
                 WHERE result_id = ?
                 """,
                 (parent_name, now_ist_iso(), CONSENT_TEXT_VERSION, ip_digest, rid),
+            )
+            db.execute(
+                """
+                UPDATE results
+                SET is_sample = 0, published = 1, pinned = 1
+                WHERE id = ?
+                """,
+                (rid,),
             )
             return {
                 "ok": True,
@@ -1265,6 +1275,14 @@ async def api_admin_paper_consent(
             WHERE result_id = ?
             """,
             (parent_name or result["parent_name"] or "Paper Signatory", received_date, CONSENT_TEXT_VERSION, staff_name, result_id),
+        )
+        db.execute(
+            """
+            UPDATE results
+            SET is_sample = 0, published = 1, pinned = 1
+            WHERE id = ?
+            """,
+            (result_id,),
         )
         return {"ok": True, "status": "Given", "method": "Paper", "recorded_by": staff_name}
 
@@ -1879,9 +1897,17 @@ async def api_admin_update_branch(
         if not existing:
             raise HTTPException(status_code=404, detail="Branch not found.")
 
+        name = str(body.get("name", existing["name"])).strip()
+        name = re.sub(r"\s*\([Ff]lagship\)", "", name).strip()
+        address = str(body.get("address", existing["address"])).strip()
+        address = re.sub(r"\s*\([Ff]lagship\)", "", address).strip()
+
         maps_url = str(body.get("maps_url", existing["maps_url"])).strip()
         if maps_url and not maps_url.startswith("https://"):
             raise HTTPException(status_code=422, detail="Google Maps URL must start with https://")
+        if not maps_url or "google.com/maps/search/?api=1&query=" in maps_url or address != existing["address"]:
+            if not maps_url or "google.com/maps/search/?api=1&query=" in maps_url:
+                maps_url = "https://www.google.com/maps/search/?api=1&query=" + urllib.parse.quote_plus(address)
 
         raw_phone = str(body.get("phone", existing["phone"])).strip()
         raw_wa = str(body.get("whatsapp", existing["whatsapp"])).strip()
@@ -1902,8 +1928,8 @@ async def api_admin_update_branch(
             WHERE id = ?
             """,
             (
-                str(body.get("name", existing["name"])).strip(),
-                str(body.get("address", existing["address"])).strip(),
+                name,
+                address,
                 maps_url,
                 phone,
                 whatsapp,
@@ -2195,7 +2221,7 @@ def _query_filtered_leads(
                 "class_name": l["class_name"],
                 "stream": l["stream"],
                 "branch_id": int(l["branch_id"]),
-                "branch_name": l.get("branch_name") or "West Patel Nagar (Flagship)",
+                "branch_name": l.get("branch_name") or "West Patel Nagar",
                 "status": l["status"],
                 "note": l["note"] or "",
                 "source": l["source"] or "/",

@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Fixed
+- **CR-0005:** Real-time reflection of branch address updates by switching `/api/public/bootstrap` and `/api/public/results` to `no-cache, no-store, must-revalidate` response headers, dynamically rendering active address in the footer, auto-updating Google Maps directions links, and completely removing "Flagship" badges and `(Flagship)` suffixes across public pages and admin forms (`AC-6.5`).
+- **CR-0005:** Immediate unflagging of approved student results (`is_sample = 0, published = 1, pinned = 1`) upon paper or online parent consent recording, guaranteeing approved toppers are never skipped by production `DEMO_MODE=false` filters, and falling back to approved results on the homepage when `pinned_results` is empty (`AC-3.9`).
+
 ### Added
 - **CR-0004:** Universal high-resolution photo upload support (up to 25 MB source files, any standard format JPEG/PNG/WebP/HEIC with server-side WebP conversion and aspect ratio enforcement) and adaptive client-side canvas cropper (`AC-11.4`, `AC-11.5`, `AC-11.8`).
 - **CR-0004:** Complete visual restyling of Shikshanama with premium Navy (`#0B2545`) and Muted Gold (`#C9A227`) design system, Google Fonts (`Playfair Display`, `Poppins`, `DM Sans`, `Noto Sans Devanagari`), brand favicons (ico, svg, apple-touch-icon, android-chrome, site.webmanifest), 1200x630 OpenGraph assets, and WCAG AA contrast across Light & Dark themes (`AC-24.1`, `AC-24.2`).
