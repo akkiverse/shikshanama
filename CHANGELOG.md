@@ -5,6 +5,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- **CR-0003:** Full inline Edit and Reorder (`↑`/`↓`) across all React Admin CMS managers (`src/admin/AdminApp.tsx`), including Hero trust counters (Total Toppers, Years of Excellence), Section Headings (English + Hindi accent line), Branch addresses & contact details (including West Patel Nagar Flagship), Courses, Batches, Results, Founders, Testimonials, and Gallery (`AC-12.7`, `AC-14.6`, `AC-14.7`, `AC-15.5`, `AC-18.5`).
+- **CR-0003:** Automatic filtering of sample content (`is_sample = 1`) on public pages when `DEMO_MODE=false` is set in the environment or toggled in Admin settings, while keeping the Flagship branch, Hero counters, and Courses live as institute defaults. Editing any item in Admin automatically clears its sample tag (`AC-18.5`).
+
 ### Fixed
 - **CR-0002:** Updated `pyproject.toml`, `requirements.txt`, and `uv.lock` to resolve `psycopg-binary` (`3.3.6`) and `pillow` (`12.x`) wheels compatible with Vercel's CPython 3.14 (`cp314`) runtime (`AC-19.2`).
 

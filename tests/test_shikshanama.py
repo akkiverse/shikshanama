@@ -801,3 +801,71 @@ def test_ac_20_1_to_20_8_and_21_1_to_21_4_whatsapp_consent_and_pdf(client: TestC
     assert paper_ok.json()["method"] == "Paper"
     after_paper = client.get("/api/public/results").json()["results"]
     assert any(r["name"] == "Vihaan Mehta" for r in after_paper)
+
+
+# ---------------------------------------------------------------------------
+# CR-0003: Inline Edit, Reorder, and DEMO_MODE=false filtering
+# ---------------------------------------------------------------------------
+
+
+def test_cr_0003_demo_mode_false_and_inline_edit_reorder(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+    csrf = _admin_login(client)
+
+    # 1. Test updating Hero trust counter
+    stats = client.get("/api/admin/hero-stats", headers={"x-csrf-token": csrf}).json()["hero_stats"]
+    assert len(stats) >= 1
+    stat_id = stats[0]["id"]
+    put_stat = client.put(
+        f"/api/admin/hero-stats/{stat_id}",
+        json={"label": "Toppers Produced", "value": "1,500+", "visible": True},
+        headers={"x-csrf-token": csrf},
+    )
+    assert put_stat.status_code == 200
+
+    # 2. Test reordering Hero stats
+    if len(stats) > 1:
+        reordered_ids = [s["id"] for s in reversed(stats)]
+        reorder_resp = client.post(
+            "/api/admin/hero-stats/reorder",
+            json={"ids": reordered_ids},
+            headers={"x-csrf-token": csrf},
+        )
+        assert reorder_resp.status_code == 200
+        new_stats = client.get("/api/admin/hero-stats", headers={"x-csrf-token": csrf}).json()["hero_stats"]
+        assert [s["id"] for s in new_stats] == reordered_ids
+
+    # 3. Test editing Flagship Branch address and phone
+    branches = client.get("/api/admin/branches", headers={"x-csrf-token": csrf}).json()["branches"]
+    flagship = next(b for b in branches if b["is_flagship"])
+    put_branch = client.put(
+        f"/api/admin/branches/{flagship['id']}",
+        json={
+            "name": flagship["name"],
+            "address": "24/11, Main Market, West Patel Nagar, New Delhi - 110008",
+            "maps_url": flagship["maps_url"],
+            "phone": "+91 98100 12345",
+            "whatsapp": "+91 98100 12345",
+            "is_flagship": True,
+            "active": True,
+        },
+        headers={"x-csrf-token": csrf},
+    )
+    assert put_branch.status_code == 200
+    updated_branches = client.get("/api/admin/branches", headers={"x-csrf-token": csrf}).json()["branches"]
+    up_flagship = next(b for b in updated_branches if b["id"] == flagship["id"])
+    assert "24/11, Main Market" in up_flagship["address"]
+
+    # 4. Test DEMO_MODE=false environment variable filtering
+    # When DEMO_MODE=false, sample results/batches/branches are hidden on public endpoints,
+    # but Flagship branch, hero stats, and courses remain visible.
+    monkeypatch.setenv("DEMO_MODE", "false")
+    boot = client.get("/api/public/bootstrap").json()
+    assert boot["settings"]["demo_mode"] is False
+    # All sample results are hidden
+    assert all(not r["is_sample"] for r in boot["results"])
+    # Flagship branch remains visible
+    assert any(b["is_flagship"] for b in boot["branches"])
+    # All sample non-flagship branches hidden
+    assert all(b["is_flagship"] or not b["is_sample"] for b in boot["branches"])
+    # Courses remain available
+    assert len(boot["courses"]) >= 4

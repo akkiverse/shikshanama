@@ -16,6 +16,16 @@ type AdminTab =
   | "leads"
   | "staff";
 
+const SECTION_HEADING_KEYS: [string, string][] = [
+  ["results", "Hall of Fame Results"],
+  ["courses", "Courses & Streams"],
+  ["batches", "Upcoming Batches"],
+  ["founders", "Founders' Desk"],
+  ["branches", "Our Branches"],
+  ["campus", "Life at Shikshanama & Testimonials"],
+  ["demo", "Free Demo Class Form"],
+];
+
 export const AdminApp: React.FC = () => {
   const [authChecked, setAuthChecked] = useState(false);
   const [user, setUser] = useState<{ id: number; email: string } | null>(null);
@@ -64,6 +74,23 @@ export const AdminApp: React.FC = () => {
   const [leads, setLeads] = useState<any[]>([]);
   const [staff, setStaff] = useState<any[]>([]);
 
+  // Inline edit state trackers
+  const [editingResult, setEditingResult] = useState<any | null>(null);
+  const [editingFounder, setEditingFounder] = useState<any | null>(null);
+  const [editingBranch, setEditingBranch] = useState<any | null>(null);
+  const [editingCourse, setEditingCourse] = useState<any | null>(null);
+  const [editingBatch, setEditingBatch] = useState<any | null>(null);
+  const [editingTestimonial, setEditingTestimonial] = useState<any | null>(null);
+  const [editingGallery, setEditingGallery] = useState<any | null>(null);
+  const [leadNotes, setLeadNotes] = useState<Record<number, string>>({});
+
+  // Filters
+  const [resultFilterClass, setResultFilterClass] = useState("All");
+  const [resultFilterStream, setResultFilterStream] = useState("All");
+  const [resultFilterConsent, setResultFilterConsent] = useState("All");
+  const [leadFilterStatus, setLeadFilterStatus] = useState("All");
+  const [leadFilterBranch, setLeadFilterBranch] = useState("All");
+
   // Form states for quick creation
   const [newResult, setNewResult] = useState({
     name: "",
@@ -84,6 +111,21 @@ export const AdminApp: React.FC = () => {
     photo_url: "",
     designation: "",
     vision: "",
+    visible: true,
+  });
+
+  const [newHeroStat, setNewHeroStat] = useState({
+    label: "",
+    value: "",
+    visible: true,
+  });
+
+  const [newCourse, setNewCourse] = useState({
+    stream: "Science",
+    name: "",
+    classes: "11 – 12",
+    subjectsText: "",
+    highlightsText: "",
     visible: true,
   });
 
@@ -113,11 +155,13 @@ export const AdminApp: React.FC = () => {
     role: "Student",
     class_year: "",
     photo_url: "",
+    visible: true,
   });
 
   const [newGallery, setNewGallery] = useState({
     image_url: "",
     caption: "",
+    visible: true,
   });
 
   const [newStaff, setNewStaff] = useState({ email: "", password: "" });
@@ -171,7 +215,15 @@ export const AdminApp: React.FC = () => {
     }
     if (tRes.ok) setTestimonials((await tRes.json()).testimonials || []);
     if (gRes.ok) setGallery((await gRes.json()).gallery || []);
-    if (lRes.ok) setLeads((await lRes.json()).leads || []);
+    if (lRes.ok) {
+      const lList = (await lRes.json()).leads || [];
+      setLeads(lList);
+      const notesMap: Record<number, string> = {};
+      lList.forEach((item: any) => {
+        notesMap[item.id] = item.note || "";
+      });
+      setLeadNotes(notesMap);
+    }
     if (stRes.ok) setStaff((await stRes.json()).staff || []);
   };
 
@@ -193,6 +245,22 @@ export const AdminApp: React.FC = () => {
       throw new Error(data.detail || "Action failed");
     }
     return data;
+  };
+
+  const reorderItems = async (endpoint: string, list: any[], index: number, direction: -1 | 1) => {
+    const targetIdx = index + direction;
+    if (targetIdx < 0 || targetIdx >= list.length) return;
+    const copy = [...list];
+    const [moved] = copy.splice(index, 1);
+    copy.splice(targetIdx, 0, moved);
+    const ids = copy.map((item) => item.id);
+    try {
+      await adminFetch(endpoint, "POST", { ids });
+      setToast("Order updated!");
+      await loadAllAdminData();
+    } catch (err: any) {
+      setToast(err.message);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -284,6 +352,19 @@ export const AdminApp: React.FC = () => {
     );
   }
 
+  const filteredResults = results.filter((r) => {
+    if (resultFilterClass !== "All" && String(r.class_name) !== resultFilterClass) return false;
+    if (resultFilterStream !== "All" && String(r.stream) !== resultFilterStream) return false;
+    if (resultFilterConsent !== "All" && String(r.consent_status) !== resultFilterConsent) return false;
+    return true;
+  });
+
+  const filteredLeads = leads.filter((l) => {
+    if (leadFilterStatus !== "All" && String(l.status) !== leadFilterStatus) return false;
+    if (leadFilterBranch !== "All" && String(l.branch_id) !== leadFilterBranch) return false;
+    return true;
+  });
+
   return (
     <div style={{ minHeight: "100vh", paddingBottom: "4rem" }}>
       {cropperTarget && (
@@ -320,15 +401,15 @@ export const AdminApp: React.FC = () => {
           {(
             [
               ["dashboard", "Dashboard"],
-              ["results", "Results & Consents"],
-              ["leads", `Leads (${dashboard?.new_leads_count ?? 0} New)`],
-              ["batches", "Batches"],
+              ["homepage", "Hero Stats & Headings"],
+              ["branches", "Branches & Address"],
               ["courses", "Courses"],
-              ["homepage", "Homepage & Headings"],
+              ["batches", "Batches"],
+              ["results", "Results & Consents"],
               ["founders", "Founders"],
-              ["branches", "Branches"],
               ["testimonials", "Testimonials"],
               ["gallery", "Gallery"],
+              ["leads", `Leads (${dashboard?.new_leads_count ?? 0} New)`],
               ["settings", "Contacts & Socials"],
               ["staff", "Staff"],
             ] as [AdminTab, string][]
@@ -365,6 +446,7 @@ export const AdminApp: React.FC = () => {
           </div>
         )}
 
+        {/* ================= DASHBOARD ================= */}
         {tab === "dashboard" && dashboard && (
           <div style={{ display: "grid", gap: "1rem" }}>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "1rem" }}>
@@ -390,33 +472,937 @@ export const AdminApp: React.FC = () => {
               </div>
             </div>
 
-            {dashboard.has_sample_content && (
-              <div className="bento-card" style={{ borderColor: "rgba(245, 158, 11, 0.5)" }}>
-                <h3 style={{ marginTop: 0 }}>Demo Sample Content is Active</h3>
-                <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                  Ready for a real launch? Click below to delete all fictional sample records and their images in one go,
-                  leaving real content untouched.
-                </p>
+            <div className="bento-card">
+              <h3 style={{ marginTop: 0 }}>Quick Edit Shortcuts</h3>
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem", marginTop: 0 }}>
+                Jump directly to edit institute numbers, branch addresses, courses, or toppers:
+              </p>
+              <div style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap" }}>
+                <button type="button" className="btn-secondary" onClick={() => switchTab("homepage")}>
+                  Edit Total Toppers / Experience Counters
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => switchTab("branches")}>
+                  Edit Branch Address & Phone
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => switchTab("courses")}>
+                  Edit Courses & Subjects
+                </button>
+                <button type="button" className="btn-secondary" onClick={() => switchTab("settings")}>
+                  Edit Global WhatsApp & Instagram
+                </button>
+              </div>
+            </div>
+
+            <div className="bento-card" style={{ borderColor: "rgba(245, 158, 11, 0.5)" }}>
+              <h3 style={{ marginTop: 0 }}>
+                Demo Sample Mode: {settings?.demo_mode ? "🟢 ON (Showing Sample Data)" : "⚪ OFF (Real Content Only)"}
+              </h3>
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                When Demo Mode is OFF, sample toppers, sample founders, sample batches, and secondary sample branches are
+                hidden from the public site while keeping your Flagship West Patel Nagar branch, Hero counters, and Courses
+                live. You can edit any item in the tabs above to make it real, or delete all sample records permanently.
+              </p>
+              <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
+                {settings && (
+                  <button
+                    type="button"
+                    className="btn-secondary"
+                    onClick={async () => {
+                      try {
+                        const nextDemo = !settings.demo_mode;
+                        await adminFetch("/api/admin/settings", "PUT", { ...settings, demo_mode: nextDemo });
+                        setToast(nextDemo ? "Demo Sample Mode enabled." : "Demo Sample Mode turned OFF.");
+                        loadAllAdminData();
+                      } catch (e: any) {
+                        setToast(e.message);
+                      }
+                    }}
+                  >
+                    {settings.demo_mode ? "Hide Sample Content (Turn Demo Mode OFF)" : "Show Sample Content (Turn Demo Mode ON)"}
+                  </button>
+                )}
+                {dashboard.has_sample_content && (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={async () => {
+                      try {
+                        await adminFetch("/api/admin/sample-content/remove", "POST");
+                        setToast("Removed all sample content permanently.");
+                        loadAllAdminData();
+                      } catch (e: any) {
+                        setToast(e.message);
+                      }
+                    }}
+                  >
+                    Remove all sample content
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= HOMEPAGE: HERO COUNTERS, TICKER, BANNER & HEADINGS ================= */}
+        {tab === "homepage" && settings && (
+          <div style={{ display: "grid", gap: "1.25rem" }}>
+            {/* Hero Trust Counters */}
+            <div className="bento-card">
+              <h2 style={{ marginTop: 0 }}>Hero Trust Counters (Total Toppers, Years of Excellence, etc.)</h2>
+              <p style={{ color: "var(--text-secondary)", fontSize: "0.88rem", marginTop: 0 }}>
+                Edit any counter label or number directly below and click Save, or add a new counter.
+              </p>
+              <div style={{ display: "grid", gap: "0.65rem", marginBottom: "1rem" }}>
+                {heroStats.map((stat, idx) => (
+                  <div
+                    key={stat.id}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                      gap: "0.5rem",
+                      alignItems: "center",
+                      padding: "0.65rem",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "0.6rem",
+                    }}
+                  >
+                    <input
+                      aria-label={`Counter Label ${stat.id}`}
+                      value={stat.label}
+                      placeholder="Label (e.g. Total Toppers)"
+                      onChange={(e) =>
+                        setHeroStats((prev) =>
+                          prev.map((s) => (s.id === stat.id ? { ...s, label: e.target.value } : s))
+                        )
+                      }
+                    />
+                    <input
+                      aria-label={`Counter Value ${stat.id}`}
+                      value={stat.value}
+                      placeholder="Value (e.g. 1,250+)"
+                      onChange={(e) =>
+                        setHeroStats((prev) =>
+                          prev.map((s) => (s.id === stat.id ? { ...s, value: e.target.value } : s))
+                        )
+                      }
+                    />
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.85rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={stat.visible}
+                        onChange={(e) =>
+                          setHeroStats((prev) =>
+                            prev.map((s) => (s.id === stat.id ? { ...s, visible: e.target.checked } : s))
+                          )
+                        }
+                      />
+                      Visible
+                    </label>
+                    <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn-primary"
+                        style={{ padding: "0.38rem 0.75rem", fontSize: "0.8rem" }}
+                        onClick={async () => {
+                          try {
+                            await adminFetch(`/api/admin/hero-stats/${stat.id}`, "PUT", {
+                              label: stat.label,
+                              value: stat.value,
+                              visible: stat.visible,
+                            });
+                            setToast(`Saved counter "${stat.label}"!`);
+                            loadAllAdminData();
+                          } catch (err: any) {
+                            setToast(err.message);
+                          }
+                        }}
+                      >
+                        Save
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                        disabled={idx === 0}
+                        onClick={() => reorderItems("/api/admin/hero-stats/reorder", heroStats, idx, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                        disabled={idx === heroStats.length - 1}
+                        onClick={() => reorderItems("/api/admin/hero-stats/reorder", heroStats, idx, 1)}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex", color: "#f87171", fontSize: "0.78rem" }}
+                        onClick={async () => {
+                          await adminFetch(`/api/admin/hero-stats/${stat.id}`, "DELETE");
+                          setToast("Counter deleted.");
+                          loadAllAdminData();
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await adminFetch("/api/admin/hero-stats", "POST", newHeroStat);
+                    setNewHeroStat({ label: "", value: "", visible: true });
+                    setToast("Added new Hero Counter!");
+                    loadAllAdminData();
+                  } catch (err: any) {
+                    setToast(err.message);
+                  }
+                }}
+                style={{ display: "flex", gap: "0.6rem", flexWrap: "wrap", alignItems: "center" }}
+              >
+                <input
+                  placeholder="New Counter Label (e.g. Selection Ratio)"
+                  required
+                  value={newHeroStat.label}
+                  onChange={(e) => setNewHeroStat((p) => ({ ...p, label: e.target.value }))}
+                />
+                <input
+                  placeholder="Value (e.g. 94%)"
+                  required
+                  value={newHeroStat.value}
+                  onChange={(e) => setNewHeroStat((p) => ({ ...p, value: e.target.value }))}
+                />
+                <button type="submit" className="btn-secondary">
+                  + Add Counter
+                </button>
+              </form>
+            </div>
+
+            {/* Announcement Ticker & Hero Banner */}
+            <div className="bento-card">
+              <h2 style={{ marginTop: 0 }}>Announcement Ticker & 16:9 Hero Banner</h2>
+              <div style={{ display: "grid", gap: "0.75rem" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={settings.ticker_enabled}
+                    onChange={(e) => setSettings((p: any) => ({ ...p, ticker_enabled: e.target.checked }))}
+                  />
+                  Show Top Announcement Ticker
+                </label>
+                <input
+                  placeholder="Ticker Text (max 200 chars)"
+                  maxLength={200}
+                  value={settings.ticker_text}
+                  onChange={(e) => setSettings((p: any) => ({ ...p, ticker_text: e.target.value }))}
+                />
+                <input
+                  placeholder="Optional Ticker Link (e.g. /batches or #demo-form)"
+                  value={settings.ticker_link}
+                  onChange={(e) => setSettings((p: any) => ({ ...p, ticker_link: e.target.value }))}
+                />
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="mobile-menu-btn"
+                    style={{ display: "inline-flex" }}
+                    onClick={() =>
+                      setCropperTarget({
+                        kind: "banner",
+                        onDone: (url) => setSettings((p: any) => ({ ...p, hero_image_url: url })),
+                      })
+                    }
+                  >
+                    {settings.hero_image_url ? "Replace 16:9 Hero Banner" : "Upload 16:9 Hero Banner"}
+                  </button>
+                  {settings.hero_image_url && (
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", color: "#f87171" }}
+                      onClick={() => setSettings((p: any) => ({ ...p, hero_image_url: "" }))}
+                    >
+                      Remove Banner
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Bilingual Section Headings */}
+            <div className="bento-card">
+              <h2 style={{ marginTop: 0 }}>Section Headings (English + Hindi Accent Line)</h2>
+              <div style={{ display: "grid", gap: "0.75rem" }}>
+                {SECTION_HEADING_KEYS.map(([secKey, secTitle]) => {
+                  const sec = settings.section_headings?.[secKey] || { en: "", hi: "" };
+                  return (
+                    <div
+                      key={secKey}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                        gap: "0.5rem",
+                        alignItems: "center",
+                        padding: "0.5rem",
+                        borderBottom: "1px solid var(--border-color)",
+                      }}
+                    >
+                      <strong style={{ fontSize: "0.88rem" }}>{secTitle}</strong>
+                      <input
+                        placeholder="English Heading"
+                        value={sec.en}
+                        onChange={(e) =>
+                          setSettings((p: any) => ({
+                            ...p,
+                            section_headings: {
+                              ...(p.section_headings || {}),
+                              [secKey]: { ...sec, en: e.target.value },
+                            },
+                          }))
+                        }
+                      />
+                      <input
+                        placeholder="Hindi Accent Line"
+                        value={sec.hi}
+                        onChange={(e) =>
+                          setSettings((p: any) => ({
+                            ...p,
+                            section_headings: {
+                              ...(p.section_headings || {}),
+                              [secKey]: { ...sec, hi: e.target.value },
+                            },
+                          }))
+                        }
+                      />
+                    </div>
+                  );
+                })}
                 <button
                   type="button"
                   className="btn-primary"
                   onClick={async () => {
                     try {
-                      await adminFetch("/api/admin/sample-content/remove", "POST");
-                      setToast("Removed all sample content.");
+                      await adminFetch("/api/admin/settings", "PUT", settings);
+                      setToast("Homepage Ticker, Banner & Section Headings saved!");
                       loadAllAdminData();
-                    } catch (e: any) {
-                      setToast(e.message);
+                    } catch (err: any) {
+                      setToast(err.message);
                     }
                   }}
                 >
-                  Remove all sample content
+                  Save Homepage & Headings
                 </button>
               </div>
-            )}
+            </div>
           </div>
         )}
 
+        {/* ================= BRANCHES ================= */}
+        {tab === "branches" && (
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <div className="bento-card">
+              <h2 style={{ marginTop: 0 }}>Add New Branch Location</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await adminFetch("/api/admin/branches", "POST", newBranch);
+                    setNewBranch({
+                      name: "",
+                      address: "",
+                      maps_url: "",
+                      phone: "",
+                      whatsapp: "",
+                      is_flagship: false,
+                      active: true,
+                    });
+                    setToast("Branch created!");
+                    loadAllAdminData();
+                  } catch (err: any) {
+                    setToast(err.message);
+                  }
+                }}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "0.75rem" }}
+              >
+                <input
+                  placeholder="Branch Name *"
+                  required
+                  value={newBranch.name}
+                  onChange={(e) => setNewBranch((p) => ({ ...p, name: e.target.value }))}
+                />
+                <input
+                  placeholder="Full Address *"
+                  required
+                  value={newBranch.address}
+                  onChange={(e) => setNewBranch((p) => ({ ...p, address: e.target.value }))}
+                />
+                <input
+                  placeholder="Google Maps URL (https://...)"
+                  value={newBranch.maps_url}
+                  onChange={(e) => setNewBranch((p) => ({ ...p, maps_url: e.target.value }))}
+                />
+                <input
+                  placeholder="Phone (+91...)"
+                  value={newBranch.phone}
+                  onChange={(e) => setNewBranch((p) => ({ ...p, phone: e.target.value }))}
+                />
+                <input
+                  placeholder="WhatsApp (+91...)"
+                  value={newBranch.whatsapp}
+                  onChange={(e) => setNewBranch((p) => ({ ...p, whatsapp: e.target.value }))}
+                />
+                <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                  <input
+                    type="checkbox"
+                    checked={newBranch.is_flagship}
+                    onChange={(e) => setNewBranch((p) => ({ ...p, is_flagship: e.target.checked }))}
+                  />
+                  Mark as Flagship
+                </label>
+                <button type="submit" className="btn-primary">
+                  Save Branch
+                </button>
+              </form>
+            </div>
+
+            {branches.map((b, idx) => (
+              <div key={b.id} className="bento-card" style={{ display: "grid", gap: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <strong>{b.name}</strong> {b.is_flagship && "⭐ Flagship"}{" "}
+                    {!b.active && <span style={{ color: "#fbbf24" }}>(Inactive)</span>}
+                    {b.is_sample && !b.is_flagship && (
+                      <span style={{ fontSize: "0.75rem", color: "#fbbf24", marginLeft: "0.4rem" }}>[Sample]</span>
+                    )}
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>{b.address}</div>
+                    <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                      Phone: {b.phone || "Uses Global"} · WhatsApp: {b.whatsapp || "Uses Global"}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}
+                      onClick={() => setEditingBranch(editingBranch?.id === b.id ? null : { ...b })}
+                    >
+                      {editingBranch?.id === b.id ? "Close Edit" : "Edit Address / Details"}
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === 0}
+                      onClick={() => reorderItems("/api/admin/branches/reorder", branches, idx, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === branches.length - 1}
+                      onClick={() => reorderItems("/api/admin/branches/reorder", branches, idx, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", color: "#f87171", fontSize: "0.8rem" }}
+                      onClick={async () => {
+                        try {
+                          await adminFetch(`/api/admin/branches/${b.id}`, "DELETE");
+                          setToast("Branch deleted.");
+                          loadAllAdminData();
+                        } catch (err: any) {
+                          setToast(err.message);
+                        }
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {editingBranch?.id === b.id && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        await adminFetch(`/api/admin/branches/${b.id}`, "PUT", editingBranch);
+                        setToast(`Updated branch "${editingBranch.name}"!`);
+                        setEditingBranch(null);
+                        loadAllAdminData();
+                      } catch (err: any) {
+                        setToast(err.message);
+                      }
+                    }}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+                      gap: "0.65rem",
+                      paddingTop: "0.65rem",
+                      borderTop: "1px solid var(--border-color)",
+                    }}
+                  >
+                    <input
+                      placeholder="Branch Name *"
+                      required
+                      value={editingBranch.name}
+                      onChange={(e) => setEditingBranch((p: any) => ({ ...p, name: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Full Street Address *"
+                      required
+                      value={editingBranch.address}
+                      onChange={(e) => setEditingBranch((p: any) => ({ ...p, address: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Google Maps URL (https://...)"
+                      value={editingBranch.maps_url}
+                      onChange={(e) => setEditingBranch((p: any) => ({ ...p, maps_url: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Branch Phone (+91...)"
+                      value={editingBranch.phone}
+                      onChange={(e) => setEditingBranch((p: any) => ({ ...p, phone: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Branch WhatsApp (+91...)"
+                      value={editingBranch.whatsapp}
+                      onChange={(e) => setEditingBranch((p: any) => ({ ...p, whatsapp: e.target.value }))}
+                    />
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={editingBranch.is_flagship}
+                        onChange={(e) => setEditingBranch((p: any) => ({ ...p, is_flagship: e.target.checked }))}
+                      />
+                      Flagship Branch
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={editingBranch.active}
+                        onChange={(e) => setEditingBranch((p: any) => ({ ...p, active: e.target.checked }))}
+                      />
+                      Active on Public Site
+                    </label>
+                    <button type="submit" className="btn-primary">
+                      Save Branch Changes
+                    </button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ================= COURSES ================= */}
+        {tab === "courses" && (
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <div className="bento-card">
+              <h2 style={{ marginTop: 0 }}>Add Course Stream</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    const subjects = newCourse.subjectsText
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean);
+                    const highlights = newCourse.highlightsText
+                      .split(",")
+                      .map((s) => s.trim())
+                      .filter(Boolean);
+                    await adminFetch("/api/admin/courses", "POST", {
+                      stream: newCourse.stream,
+                      name: newCourse.name,
+                      classes: newCourse.classes,
+                      subjects,
+                      highlights,
+                      visible: newCourse.visible,
+                    });
+                    setNewCourse({
+                      stream: "Science",
+                      name: "",
+                      classes: "11 – 12",
+                      subjectsText: "",
+                      highlightsText: "",
+                      visible: true,
+                    });
+                    setToast("Course added!");
+                    loadAllAdminData();
+                  } catch (err: any) {
+                    setToast(err.message);
+                  }
+                }}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "0.75rem" }}
+              >
+                <input
+                  placeholder="Stream (e.g. Science) *"
+                  required
+                  value={newCourse.stream}
+                  onChange={(e) => setNewCourse((p) => ({ ...p, stream: e.target.value }))}
+                />
+                <input
+                  placeholder="Course Title *"
+                  required
+                  value={newCourse.name}
+                  onChange={(e) => setNewCourse((p) => ({ ...p, name: e.target.value }))}
+                />
+                <input
+                  placeholder="Classes (e.g. 11 – 12) *"
+                  required
+                  value={newCourse.classes}
+                  onChange={(e) => setNewCourse((p) => ({ ...p, classes: e.target.value }))}
+                />
+                <input
+                  placeholder="Subjects (comma-separated)"
+                  value={newCourse.subjectsText}
+                  onChange={(e) => setNewCourse((p) => ({ ...p, subjectsText: e.target.value }))}
+                />
+                <input
+                  placeholder="Highlights (comma-separated)"
+                  value={newCourse.highlightsText}
+                  onChange={(e) => setNewCourse((p) => ({ ...p, highlightsText: e.target.value }))}
+                />
+                <button type="submit" className="btn-primary">
+                  Add Course
+                </button>
+              </form>
+            </div>
+
+            {courses.map((c, idx) => (
+              <div key={c.id} className="bento-card" style={{ display: "grid", gap: "0.65rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <strong>{c.stream}</strong>: {c.name} (Classes {c.classes}){" "}
+                    {!c.visible && <span style={{ color: "#fbbf24" }}>(Hidden)</span>}
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                      Subjects: {(c.subjects || []).join(", ")}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}
+                      onClick={() =>
+                        setEditingCourse(
+                          editingCourse?.id === c.id
+                            ? null
+                            : {
+                                ...c,
+                                subjectsText: (c.subjects || []).join(", "),
+                                highlightsText: (c.highlights || []).join(", "),
+                              }
+                        )
+                      }
+                    >
+                      {editingCourse?.id === c.id ? "Close Edit" : "Edit Course"}
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === 0}
+                      onClick={() => reorderItems("/api/admin/courses/reorder", courses, idx, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === courses.length - 1}
+                      onClick={() => reorderItems("/api/admin/courses/reorder", courses, idx, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", color: "#f87171", fontSize: "0.8rem" }}
+                      onClick={async () => {
+                        await adminFetch(`/api/admin/courses/${c.id}`, "DELETE");
+                        setToast("Course deleted.");
+                        loadAllAdminData();
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {editingCourse?.id === c.id && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        const subjects = editingCourse.subjectsText
+                          .split(",")
+                          .map((s: string) => s.trim())
+                          .filter(Boolean);
+                        const highlights = editingCourse.highlightsText
+                          .split(",")
+                          .map((s: string) => s.trim())
+                          .filter(Boolean);
+                        await adminFetch(`/api/admin/courses/${c.id}`, "PUT", {
+                          stream: editingCourse.stream,
+                          name: editingCourse.name,
+                          classes: editingCourse.classes,
+                          subjects,
+                          highlights,
+                          visible: editingCourse.visible,
+                        });
+                        setToast(`Saved course "${editingCourse.name}"!`);
+                        setEditingCourse(null);
+                        loadAllAdminData();
+                      } catch (err: any) {
+                        setToast(err.message);
+                      }
+                    }}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+                      gap: "0.65rem",
+                      paddingTop: "0.65rem",
+                      borderTop: "1px solid var(--border-color)",
+                    }}
+                  >
+                    <input
+                      placeholder="Stream *"
+                      required
+                      value={editingCourse.stream}
+                      onChange={(e) => setEditingCourse((p: any) => ({ ...p, stream: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Course Name *"
+                      required
+                      value={editingCourse.name}
+                      onChange={(e) => setEditingCourse((p: any) => ({ ...p, name: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Classes *"
+                      required
+                      value={editingCourse.classes}
+                      onChange={(e) => setEditingCourse((p: any) => ({ ...p, classes: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Subjects (comma-separated)"
+                      value={editingCourse.subjectsText}
+                      onChange={(e) => setEditingCourse((p: any) => ({ ...p, subjectsText: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Highlights (comma-separated)"
+                      value={editingCourse.highlightsText}
+                      onChange={(e) => setEditingCourse((p: any) => ({ ...p, highlightsText: e.target.value }))}
+                    />
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={editingCourse.visible}
+                        onChange={(e) => setEditingCourse((p: any) => ({ ...p, visible: e.target.checked }))}
+                      />
+                      Visible on Public Site
+                    </label>
+                    <button type="submit" className="btn-primary">
+                      Save Course Changes
+                    </button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ================= BATCHES ================= */}
+        {tab === "batches" && (
+          <div style={{ display: "grid", gap: "1rem" }}>
+            <div className="bento-card">
+              <h2 style={{ marginTop: 0 }}>Add Upcoming Batch</h2>
+              <form
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  try {
+                    await adminFetch("/api/admin/batches", "POST", newBatch);
+                    setToast("Batch created!");
+                    loadAllAdminData();
+                  } catch (err: any) {
+                    setToast(err.message);
+                  }
+                }}
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}
+              >
+                <input
+                  placeholder="Class (e.g. 12)"
+                  value={newBatch.class_name}
+                  onChange={(e) => setNewBatch((p) => ({ ...p, class_name: e.target.value }))}
+                />
+                <select value={newBatch.stream} onChange={(e) => setNewBatch((p) => ({ ...p, stream: e.target.value }))}>
+                  <option value="Foundation">Foundation</option>
+                  <option value="Science">Science</option>
+                  <option value="Commerce">Commerce</option>
+                  <option value="Humanities">Humanities</option>
+                </select>
+                <select
+                  value={newBatch.branch_id}
+                  onChange={(e) => setNewBatch((p) => ({ ...p, branch_id: Number(e.target.value) }))}
+                >
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="date"
+                  value={newBatch.start_date}
+                  onChange={(e) => setNewBatch((p) => ({ ...p, start_date: e.target.value }))}
+                />
+                <input
+                  placeholder="Timings"
+                  value={newBatch.timings}
+                  onChange={(e) => setNewBatch((p) => ({ ...p, timings: e.target.value }))}
+                />
+                <select value={newBatch.status} onChange={(e) => setNewBatch((p) => ({ ...p, status: e.target.value }))}>
+                  <option value="Open">Open</option>
+                  <option value="Filling Fast">Filling Fast</option>
+                  <option value="Full">Full</option>
+                </select>
+                <button type="submit" className="btn-primary">
+                  Save Batch
+                </button>
+              </form>
+            </div>
+
+            {batches.map((b) => (
+              <div key={b.id} className="bento-card" style={{ display: "grid", gap: "0.65rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <strong>
+                      Class {b.class_name} {b.stream}
+                    </strong>{" "}
+                    · {b.branch_name} · {b.start_date_formatted} ({b.status}){" "}
+                    {!b.active && <span style={{ color: "#fbbf24" }}>(Hidden)</span>}
+                    {b.is_sample && <span style={{ fontSize: "0.75rem", color: "#fbbf24", marginLeft: "0.4rem" }}>[Sample]</span>}
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{b.timings}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem" }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}
+                      onClick={() => setEditingBatch(editingBatch?.id === b.id ? null : { ...b })}
+                    >
+                      {editingBatch?.id === b.id ? "Close Edit" : "Edit Batch"}
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", color: "#f87171", fontSize: "0.8rem" }}
+                      onClick={async () => {
+                        await adminFetch(`/api/admin/batches/${b.id}`, "DELETE");
+                        loadAllAdminData();
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {editingBatch?.id === b.id && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        await adminFetch(`/api/admin/batches/${b.id}`, "PUT", editingBatch);
+                        setToast("Batch updated!");
+                        setEditingBatch(null);
+                        loadAllAdminData();
+                      } catch (err: any) {
+                        setToast(err.message);
+                      }
+                    }}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: "0.65rem",
+                      paddingTop: "0.65rem",
+                      borderTop: "1px solid var(--border-color)",
+                    }}
+                  >
+                    <input
+                      placeholder="Class"
+                      value={editingBatch.class_name}
+                      onChange={(e) => setEditingBatch((p: any) => ({ ...p, class_name: e.target.value }))}
+                    />
+                    <select
+                      value={editingBatch.stream}
+                      onChange={(e) => setEditingBatch((p: any) => ({ ...p, stream: e.target.value }))}
+                    >
+                      <option value="Foundation">Foundation</option>
+                      <option value="Science">Science</option>
+                      <option value="Commerce">Commerce</option>
+                      <option value="Humanities">Humanities</option>
+                    </select>
+                    <select
+                      value={editingBatch.branch_id}
+                      onChange={(e) => setEditingBatch((p: any) => ({ ...p, branch_id: Number(e.target.value) }))}
+                    >
+                      {branches.map((br) => (
+                        <option key={br.id} value={br.id}>
+                          {br.name}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      type="date"
+                      value={editingBatch.start_date}
+                      onChange={(e) => setEditingBatch((p: any) => ({ ...p, start_date: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Timings"
+                      value={editingBatch.timings}
+                      onChange={(e) => setEditingBatch((p: any) => ({ ...p, timings: e.target.value }))}
+                    />
+                    <select
+                      value={editingBatch.status}
+                      onChange={(e) => setEditingBatch((p: any) => ({ ...p, status: e.target.value }))}
+                    >
+                      <option value="Open">Open</option>
+                      <option value="Filling Fast">Filling Fast</option>
+                      <option value="Full">Full</option>
+                    </select>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={editingBatch.active}
+                        onChange={(e) => setEditingBatch((p: any) => ({ ...p, active: e.target.checked }))}
+                      />
+                      Active
+                    </label>
+                    <button type="submit" className="btn-primary">
+                      Save Batch Changes
+                    </button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ================= RESULTS & CONSENTS ================= */}
         {tab === "results" && (
           <div style={{ display: "grid", gap: "1.25rem" }}>
             <div className="bento-card">
@@ -528,162 +1514,250 @@ export const AdminApp: React.FC = () => {
               </form>
             </div>
 
+            {/* Filter Bar */}
+            <div className="bento-card" style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
+              <strong>Filter Results:</strong>
+              <select value={resultFilterClass} onChange={(e) => setResultFilterClass(e.target.value)}>
+                <option value="All">All Classes</option>
+                <option value="10">Class 10</option>
+                <option value="12">Class 12</option>
+              </select>
+              <select value={resultFilterStream} onChange={(e) => setResultFilterStream(e.target.value)}>
+                <option value="All">All Streams</option>
+                <option value="Science">Science</option>
+                <option value="Commerce">Commerce</option>
+                <option value="Humanities">Humanities</option>
+                <option value="Foundation">Foundation</option>
+              </select>
+              <select value={resultFilterConsent} onChange={(e) => setResultFilterConsent(e.target.value)}>
+                <option value="All">All Consent States</option>
+                <option value="Given">Given</option>
+                <option value="Given (sample)">Given (sample)</option>
+                <option value="Waiting">Waiting</option>
+                <option value="Not requested">Not requested</option>
+                <option value="Declined">Declined</option>
+                <option value="Withdrawn">Withdrawn</option>
+              </select>
+            </div>
+
             <div style={{ display: "grid", gap: "0.75rem" }}>
-              {results.map((r) => (
-                <div key={r.id} className="bento-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
-                  <div style={{ display: "flex", gap: "0.85rem", alignItems: "center" }}>
-                    <img src={r.photo_url} alt={r.name} width={56} height={56} style={{ borderRadius: "50%", objectFit: "cover" }} />
-                    <div>
-                      <strong>{r.name}</strong> · Class {r.class_name} ({r.stream}) · <span style={{ color: "var(--accent-primary)" }}>{r.score_text}</span>
-                      <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-                        Consent: <strong>{r.consent_status}</strong> {r.is_live ? "· 🟢 Live on Public Site" : "· 🔒 Hidden until consent"}
+              {filteredResults.map((r, idx) => (
+                <div key={r.id} className="bento-card" style={{ display: "grid", gap: "0.75rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.75rem" }}>
+                    <div style={{ display: "flex", gap: "0.85rem", alignItems: "center" }}>
+                      <img src={r.photo_url} alt={r.name} width={56} height={56} style={{ borderRadius: "50%", objectFit: "cover" }} />
+                      <div>
+                        <strong>{r.name}</strong> · Class {r.class_name} ({r.stream}) ·{" "}
+                        <span style={{ color: "var(--accent-primary)" }}>{r.score_text}</span>
+                        {r.pinned && <span style={{ marginLeft: "0.4rem", fontSize: "0.78rem" }}>📌 Pinned</span>}
+                        {r.is_sample && <span style={{ marginLeft: "0.4rem", fontSize: "0.75rem", color: "#fbbf24" }}>[Sample]</span>}
+                        <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+                          Consent: <strong>{r.consent_status}</strong>{" "}
+                          {r.is_live ? "· 🟢 Live on Public Site" : "· 🔒 Hidden until consent"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      className="btn-secondary"
-                      style={{ padding: "0.38rem 0.7rem", fontSize: "0.8rem" }}
-                      onClick={async () => {
-                        try {
-                          const data = await adminFetch(`/api/admin/results/${r.id}/request-consent`, "POST");
-                          window.open(data.whatsapp_url, "_blank", "noopener");
-                          loadAllAdminData();
-                        } catch (err: any) {
-                          setToast(err.message);
-                        }
-                      }}
-                    >
-                      Ask Consent on WhatsApp
-                    </button>
-                    <a
-                      href={`/api/admin/results/${r.id}/consent-pdf`}
-                      className="mobile-menu-btn"
-                      style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.8rem" }}
-                    >
-                      ⬇ PDF Form
-                    </a>
-                    <button
-                      type="button"
-                      className="mobile-menu-btn"
-                      style={{ display: "inline-flex", fontSize: "0.8rem" }}
-                      onClick={async () => {
-                        await adminFetch(`/api/admin/results/${r.id}/paper-consent`, "POST", {
-                          staff_name: user.email,
-                        });
-                        setToast("Marked paper consent received.");
-                        loadAllAdminData();
-                      }}
-                    >
-                      ✓ Paper Received
-                    </button>
-                    {r.consent_status === "Given" && (
+                    <div style={{ display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ padding: "0.38rem 0.7rem", fontSize: "0.8rem" }}
+                        onClick={() => setEditingResult(editingResult?.id === r.id ? null : { ...r })}
+                      >
+                        {editingResult?.id === r.id ? "Close Edit" : "Edit"}
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                        disabled={idx === 0}
+                        onClick={() => reorderItems("/api/admin/results/reorder", filteredResults, idx, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                        disabled={idx === filteredResults.length - 1}
+                        onClick={() => reorderItems("/api/admin/results/reorder", filteredResults, idx, 1)}
+                      >
+                        ↓
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-secondary"
+                        style={{ padding: "0.38rem 0.7rem", fontSize: "0.8rem" }}
+                        onClick={async () => {
+                          try {
+                            const data = await adminFetch(`/api/admin/results/${r.id}/request-consent`, "POST");
+                            window.open(data.whatsapp_url, "_blank", "noopener");
+                            loadAllAdminData();
+                          } catch (err: any) {
+                            setToast(err.message);
+                          }
+                        }}
+                      >
+                        Ask Consent on WhatsApp
+                      </button>
+                      <a
+                        href={`/api/admin/results/${r.id}/consent-pdf`}
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.8rem" }}
+                      >
+                        ⬇ PDF Form
+                      </a>
                       <button
                         type="button"
                         className="mobile-menu-btn"
                         style={{ display: "inline-flex", fontSize: "0.8rem" }}
                         onClick={async () => {
-                          await adminFetch(`/api/admin/results/${r.id}/withdraw-consent`, "POST");
-                          setToast("Consent withdrawn; removed from public pages.");
+                          await adminFetch(`/api/admin/results/${r.id}/paper-consent`, "POST", {
+                            staff_name: user.email,
+                          });
+                          setToast("Marked paper consent received.");
                           loadAllAdminData();
                         }}
                       >
-                        Withdraw Consent
+                        ✓ Paper Received
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      className="mobile-menu-btn"
-                      style={{ display: "inline-flex", fontSize: "0.8rem", color: "#f87171" }}
-                      onClick={async () => {
-                        await adminFetch(`/api/admin/results/${r.id}`, "DELETE");
-                        loadAllAdminData();
+                      {r.consent_status === "Given" && (
+                        <button
+                          type="button"
+                          className="mobile-menu-btn"
+                          style={{ display: "inline-flex", fontSize: "0.8rem" }}
+                          onClick={async () => {
+                            await adminFetch(`/api/admin/results/${r.id}/withdraw-consent`, "POST");
+                            setToast("Consent withdrawn; removed from public pages.");
+                            loadAllAdminData();
+                          }}
+                        >
+                          Withdraw Consent
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex", fontSize: "0.8rem", color: "#f87171" }}
+                        onClick={async () => {
+                          await adminFetch(`/api/admin/results/${r.id}`, "DELETE");
+                          loadAllAdminData();
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+
+                  {editingResult?.id === r.id && (
+                    <form
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        try {
+                          const res = await adminFetch(`/api/admin/results/${r.id}`, "PUT", editingResult);
+                          setToast(res.warning ? `Updated! ${res.warning}` : "Result updated!");
+                          setEditingResult(null);
+                          loadAllAdminData();
+                        } catch (err: any) {
+                          setToast(err.message);
+                        }
+                      }}
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+                        gap: "0.65rem",
+                        paddingTop: "0.65rem",
+                        borderTop: "1px solid var(--border-color)",
                       }}
                     >
-                      Delete
-                    </button>
-                  </div>
+                      <input
+                        placeholder="Student Name *"
+                        required
+                        value={editingResult.name}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, name: e.target.value }))}
+                      />
+                      <input
+                        placeholder="Class *"
+                        required
+                        value={editingResult.class_name}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, class_name: e.target.value }))}
+                      />
+                      <select
+                        value={editingResult.stream}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, stream: e.target.value }))}
+                      >
+                        <option value="Science">Science</option>
+                        <option value="Commerce">Commerce</option>
+                        <option value="Humanities">Humanities</option>
+                        <option value="Foundation">Foundation</option>
+                      </select>
+                      <input
+                        placeholder="Score / Marks *"
+                        required
+                        value={editingResult.score_text}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, score_text: e.target.value }))}
+                      />
+                      <input
+                        placeholder="Rank / Distinction"
+                        value={editingResult.rank_text}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, rank_text: e.target.value }))}
+                      />
+                      <input
+                        placeholder="Academic Year"
+                        value={editingResult.year}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, year: e.target.value }))}
+                      />
+                      <input
+                        placeholder="Parent Name"
+                        value={editingResult.parent_name}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, parent_name: e.target.value }))}
+                      />
+                      <input
+                        placeholder="Parent WhatsApp"
+                        value={editingResult.parent_whatsapp}
+                        onChange={(e) => setEditingResult((p: any) => ({ ...p, parent_whatsapp: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex" }}
+                        onClick={() =>
+                          setCropperTarget({
+                            kind: "result",
+                            onDone: (url) => setEditingResult((p: any) => ({ ...p, photo_url: url })),
+                          })
+                        }
+                      >
+                        Replace 1:1 Photo
+                      </button>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <input
+                          type="checkbox"
+                          checked={editingResult.published}
+                          onChange={(e) => setEditingResult((p: any) => ({ ...p, published: e.target.checked }))}
+                        />
+                        Published
+                      </label>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <input
+                          type="checkbox"
+                          checked={editingResult.pinned}
+                          onChange={(e) => setEditingResult((p: any) => ({ ...p, pinned: e.target.checked }))}
+                        />
+                        Pinned (max 8)
+                      </label>
+                      <button type="submit" className="btn-primary">
+                        Save Result Changes
+                      </button>
+                    </form>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {tab === "leads" && (
-          <div className="bento-card">
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
-              <h2 style={{ margin: 0 }}>Student Leads Inbox ({leads.length})</h2>
-              <a href="/api/admin/leads/export.csv" className="btn-primary">
-                ⬇ Export CSV (UTF-8)
-              </a>
-            </div>
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
-                <thead>
-                  <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border-color)" }}>
-                    <th style={{ padding: "0.5rem" }}>Time (IST)</th>
-                    <th style={{ padding: "0.5rem" }}>Student</th>
-                    <th style={{ padding: "0.5rem" }}>Mobile</th>
-                    <th style={{ padding: "0.5rem" }}>Class / Stream</th>
-                    <th style={{ padding: "0.5rem" }}>Branch</th>
-                    <th style={{ padding: "0.5rem" }}>Status</th>
-                    <th style={{ padding: "0.5rem" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leads.map((l) => (
-                    <tr key={l.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
-                      <td style={{ padding: "0.5rem" }}>{l.created_at}</td>
-                      <td style={{ padding: "0.5rem", fontWeight: 700 }}>{l.student_name}</td>
-                      <td style={{ padding: "0.5rem" }}>{l.mobile}</td>
-                      <td style={{ padding: "0.5rem" }}>
-                        Class {l.class_name} · {l.stream}
-                      </td>
-                      <td style={{ padding: "0.5rem" }}>{l.branch_name}</td>
-                      <td style={{ padding: "0.5rem" }}>
-                        <select
-                          value={l.status}
-                          onChange={async (e) => {
-                            await adminFetch(`/api/admin/leads/${l.id}`, "PATCH", { status: e.target.value, note: l.note });
-                            loadAllAdminData();
-                          }}
-                        >
-                          <option value="New">New</option>
-                          <option value="Contacted">Contacted</option>
-                          <option value="Enrolled">Enrolled</option>
-                        </select>
-                      </td>
-                      <td style={{ padding: "0.5rem", display: "flex", gap: "0.4rem" }}>
-                        <a
-                          href={l.whatsapp_url}
-                          target="_blank"
-                          rel="noopener"
-                          className="btn-secondary"
-                          style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem" }}
-                        >
-                          WhatsApp
-                        </a>
-                        <button
-                          type="button"
-                          className="mobile-menu-btn"
-                          style={{ display: "inline-flex", color: "#f87171", fontSize: "0.78rem" }}
-                          onClick={async () => {
-                            await adminFetch(`/api/admin/leads/${l.id}`, "DELETE");
-                            loadAllAdminData();
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
-
+        {/* ================= FOUNDERS ================= */}
         {tab === "founders" && (
           <div style={{ display: "grid", gap: "1rem" }}>
             <div className="bento-card">
@@ -694,6 +1768,7 @@ export const AdminApp: React.FC = () => {
                   try {
                     await adminFetch("/api/admin/founders", "POST", newFounder);
                     setNewFounder({ name: "", photo_url: "", designation: "", vision: "", visible: true });
+                    setToast("Founder added!");
                     loadAllAdminData();
                   } catch (err: any) {
                     setToast(err.message);
@@ -737,234 +1812,130 @@ export const AdminApp: React.FC = () => {
                 </button>
               </form>
             </div>
-            {founders.map((f) => (
-              <div key={f.id} className="bento-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong>{f.name}</strong> · {f.designation}
-                </div>
-                <button
-                  type="button"
-                  className="mobile-menu-btn"
-                  style={{ display: "inline-flex", color: "#f87171" }}
-                  onClick={async () => {
-                    await adminFetch(`/api/admin/founders/${f.id}`, "DELETE");
-                    loadAllAdminData();
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === "batches" && (
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <div className="bento-card">
-              <h2 style={{ marginTop: 0 }}>Add Upcoming Batch</h2>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  try {
-                    await adminFetch("/api/admin/batches", "POST", newBatch);
-                    loadAllAdminData();
-                  } catch (err: any) {
-                    setToast(err.message);
-                  }
-                }}
-                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "0.75rem" }}
-              >
-                <input
-                  placeholder="Class (e.g. 12)"
-                  value={newBatch.class_name}
-                  onChange={(e) => setNewBatch((p) => ({ ...p, class_name: e.target.value }))}
-                />
-                <select value={newBatch.stream} onChange={(e) => setNewBatch((p) => ({ ...p, stream: e.target.value }))}>
-                  <option value="Foundation">Foundation</option>
-                  <option value="Science">Science</option>
-                  <option value="Commerce">Commerce</option>
-                  <option value="Humanities">Humanities</option>
-                </select>
-                <select
-                  value={newBatch.branch_id}
-                  onChange={(e) => setNewBatch((p) => ({ ...p, branch_id: Number(e.target.value) }))}
-                >
-                  {branches.map((b) => (
-                    <option key={b.id} value={b.id}>
-                      {b.name}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  type="date"
-                  value={newBatch.start_date}
-                  onChange={(e) => setNewBatch((p) => ({ ...p, start_date: e.target.value }))}
-                />
-                <input
-                  placeholder="Timings"
-                  value={newBatch.timings}
-                  onChange={(e) => setNewBatch((p) => ({ ...p, timings: e.target.value }))}
-                />
-                <select value={newBatch.status} onChange={(e) => setNewBatch((p) => ({ ...p, status: e.target.value }))}>
-                  <option value="Open">Open</option>
-                  <option value="Filling Fast">Filling Fast</option>
-                  <option value="Full">Full</option>
-                </select>
-                <button type="submit" className="btn-primary">
-                  Save Batch
-                </button>
-              </form>
-            </div>
-            {batches.map((b) => (
-              <div key={b.id} className="bento-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong>Class {b.class_name} {b.stream}</strong> · {b.branch_name} · {b.start_date_formatted} ({b.status})
-                </div>
-                <button
-                  type="button"
-                  className="mobile-menu-btn"
-                  style={{ display: "inline-flex", color: "#f87171" }}
-                  onClick={async () => {
-                    await adminFetch(`/api/admin/batches/${b.id}`, "DELETE");
-                    loadAllAdminData();
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === "branches" && (
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <div className="bento-card">
-              <h2 style={{ marginTop: 0 }}>Add Branch Location</h2>
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  try {
-                    await adminFetch("/api/admin/branches", "POST", newBranch);
-                    setNewBranch({ name: "", address: "", maps_url: "", phone: "", whatsapp: "", is_flagship: false, active: true });
-                    loadAllAdminData();
-                  } catch (err: any) {
-                    setToast(err.message);
-                  }
-                }}
-                style={{ display: "grid", gap: "0.75rem" }}
-              >
-                <input placeholder="Branch Name *" required value={newBranch.name} onChange={(e) => setNewBranch((p) => ({ ...p, name: e.target.value }))} />
-                <input placeholder="Full Address *" required value={newBranch.address} onChange={(e) => setNewBranch((p) => ({ ...p, address: e.target.value }))} />
-                <input placeholder="Google Maps URL (https://...)" value={newBranch.maps_url} onChange={(e) => setNewBranch((p) => ({ ...p, maps_url: e.target.value }))} />
-                <input placeholder="Phone (+91...)" value={newBranch.phone} onChange={(e) => setNewBranch((p) => ({ ...p, phone: e.target.value }))} />
-                <input placeholder="WhatsApp (+91...)" value={newBranch.whatsapp} onChange={(e) => setNewBranch((p) => ({ ...p, whatsapp: e.target.value }))} />
-                <label>
-                  <input type="checkbox" checked={newBranch.is_flagship} onChange={(e) => setNewBranch((p) => ({ ...p, is_flagship: e.target.checked }))} /> Mark as Flagship
-                </label>
-                <button type="submit" className="btn-primary">Save Branch</button>
-              </form>
-            </div>
-            {branches.map((b) => (
-              <div key={b.id} className="bento-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <strong>{b.name}</strong> {b.is_flagship && "⭐ Flagship"}
-                  <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>{b.address}</div>
-                </div>
-                <button
-                  type="button"
-                  className="mobile-menu-btn"
-                  style={{ display: "inline-flex", color: "#f87171" }}
-                  onClick={async () => {
-                    try {
-                      await adminFetch(`/api/admin/branches/${b.id}`, "DELETE");
-                      loadAllAdminData();
-                    } catch (err: any) {
-                      setToast(err.message);
-                    }
-                  }}
-                >
-                  Delete
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {tab === "homepage" && settings && (
-          <div style={{ display: "grid", gap: "1rem" }}>
-            <div className="bento-card">
-              <h2 style={{ marginTop: 0 }}>Announcement Ticker & Hero Banner (16:9 Cropper)</h2>
-              <div style={{ display: "grid", gap: "0.75rem" }}>
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={settings.ticker_enabled}
-                    onChange={(e) => setSettings((p: any) => ({ ...p, ticker_enabled: e.target.checked }))}
-                  />{" "}
-                  Show Top Announcement Ticker
-                </label>
-                <input
-                  placeholder="Ticker Text (max 200 chars)"
-                  maxLength={200}
-                  value={settings.ticker_text}
-                  onChange={(e) => setSettings((p: any) => ({ ...p, ticker_text: e.target.value }))}
-                />
-                <input
-                  placeholder="Optional Ticker Link"
-                  value={settings.ticker_link}
-                  onChange={(e) => setSettings((p: any) => ({ ...p, ticker_link: e.target.value }))}
-                />
-                <div style={{ display: "flex", gap: "0.5rem" }}>
-                  <button
-                    type="button"
-                    className="mobile-menu-btn"
-                    style={{ display: "inline-flex" }}
-                    onClick={() =>
-                      setCropperTarget({
-                        kind: "banner",
-                        onDone: (url) => setSettings((p: any) => ({ ...p, hero_image_url: url })),
-                      })
-                    }
-                  >
-                    Upload 16:9 Hero Banner
-                  </button>
-                  {settings.hero_image_url && (
+            {founders.map((f, idx) => (
+              <div key={f.id} className="bento-card" style={{ display: "grid", gap: "0.75rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                    <img src={f.photo_url} alt={f.name} width={48} height={60} style={{ borderRadius: "0.4rem", objectFit: "cover" }} />
+                    <div>
+                      <strong>{f.name}</strong> · {f.designation}{" "}
+                      {!f.visible && <span style={{ color: "#fbbf24" }}>(Hidden)</span>}
+                      {f.is_sample && <span style={{ fontSize: "0.75rem", color: "#fbbf24", marginLeft: "0.4rem" }}>[Sample]</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}
+                      onClick={() => setEditingFounder(editingFounder?.id === f.id ? null : { ...f })}
+                    >
+                      {editingFounder?.id === f.id ? "Close Edit" : "Edit Founder"}
+                    </button>
                     <button
                       type="button"
                       className="mobile-menu-btn"
-                      style={{ display: "inline-flex" }}
-                      onClick={() => setSettings((p: any) => ({ ...p, hero_image_url: "" }))}
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === 0}
+                      onClick={() => reorderItems("/api/admin/founders/reorder", founders, idx, -1)}
                     >
-                      Remove Banner
+                      ↑
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === founders.length - 1}
+                      onClick={() => reorderItems("/api/admin/founders/reorder", founders, idx, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", color: "#f87171", fontSize: "0.8rem" }}
+                      onClick={async () => {
+                        await adminFetch(`/api/admin/founders/${f.id}`, "DELETE");
+                        loadAllAdminData();
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={async () => {
-                    await adminFetch("/api/admin/settings", "PUT", settings);
-                    setToast("Homepage & Ticker updated!");
-                    loadAllAdminData();
-                  }}
-                >
-                  Save Homepage & Headings
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {tab === "courses" && (
-          <div style={{ display: "grid", gap: "0.75rem" }}>
-            {courses.map((c) => (
-              <div key={c.id} className="bento-card">
-                <strong>{c.stream}</strong>: {c.name} (Classes {c.classes})
+                {editingFounder?.id === f.id && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      try {
+                        await adminFetch(`/api/admin/founders/${f.id}`, "PUT", editingFounder);
+                        setToast("Founder updated!");
+                        setEditingFounder(null);
+                        loadAllAdminData();
+                      } catch (err: any) {
+                        setToast(err.message);
+                      }
+                    }}
+                    style={{
+                      display: "grid",
+                      gap: "0.65rem",
+                      paddingTop: "0.65rem",
+                      borderTop: "1px solid var(--border-color)",
+                    }}
+                  >
+                    <input
+                      placeholder="Founder Name *"
+                      required
+                      value={editingFounder.name}
+                      onChange={(e) => setEditingFounder((p: any) => ({ ...p, name: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Designation *"
+                      required
+                      value={editingFounder.designation}
+                      onChange={(e) => setEditingFounder((p: any) => ({ ...p, designation: e.target.value }))}
+                    />
+                    <textarea
+                      placeholder="Vision Message (max 1,200 chars)"
+                      maxLength={1200}
+                      value={editingFounder.vision}
+                      onChange={(e) => setEditingFounder((p: any) => ({ ...p, vision: e.target.value }))}
+                    />
+                    <div style={{ display: "flex", gap: "0.75rem", alignItems: "center", flexWrap: "wrap" }}>
+                      <button
+                        type="button"
+                        className="mobile-menu-btn"
+                        style={{ display: "inline-flex" }}
+                        onClick={() =>
+                          setCropperTarget({
+                            kind: "founder",
+                            onDone: (url) => setEditingFounder((p: any) => ({ ...p, photo_url: url })),
+                          })
+                        }
+                      >
+                        Replace 4:5 Portrait
+                      </button>
+                      <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                        <input
+                          type="checkbox"
+                          checked={editingFounder.visible}
+                          onChange={(e) => setEditingFounder((p: any) => ({ ...p, visible: e.target.checked }))}
+                        />
+                        Visible on Public Site
+                      </label>
+                    </div>
+                    <button type="submit" className="btn-primary">
+                      Save Founder Changes
+                    </button>
+                  </form>
+                )}
               </div>
             ))}
           </div>
         )}
 
+        {/* ================= TESTIMONIALS ================= */}
         {tab === "testimonials" && (
           <div style={{ display: "grid", gap: "1rem" }}>
             <div className="bento-card">
@@ -973,13 +1944,30 @@ export const AdminApp: React.FC = () => {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   await adminFetch("/api/admin/testimonials", "POST", newTestimonial);
-                  setNewTestimonial({ quote: "", name: "", role: "Student", class_year: "", photo_url: "" });
+                  setNewTestimonial({ quote: "", name: "", role: "Student", class_year: "", photo_url: "", visible: true });
+                  setToast("Testimonial added!");
                   loadAllAdminData();
                 }}
                 style={{ display: "grid", gap: "0.75rem" }}
               >
-                <textarea placeholder="Quote (max 500 chars) *" maxLength={500} required value={newTestimonial.quote} onChange={(e) => setNewTestimonial((p) => ({ ...p, quote: e.target.value }))} />
-                <input placeholder="Name *" required value={newTestimonial.name} onChange={(e) => setNewTestimonial((p) => ({ ...p, name: e.target.value }))} />
+                <textarea
+                  placeholder="Quote (max 500 chars) *"
+                  maxLength={500}
+                  required
+                  value={newTestimonial.quote}
+                  onChange={(e) => setNewTestimonial((p) => ({ ...p, quote: e.target.value }))}
+                />
+                <input
+                  placeholder="Name *"
+                  required
+                  value={newTestimonial.name}
+                  onChange={(e) => setNewTestimonial((p) => ({ ...p, name: e.target.value }))}
+                />
+                <input
+                  placeholder="Class & Year (e.g. Class 12 Commerce · 2025-26)"
+                  value={newTestimonial.class_year}
+                  onChange={(e) => setNewTestimonial((p) => ({ ...p, class_year: e.target.value }))}
+                />
                 <select value={newTestimonial.role} onChange={(e) => setNewTestimonial((p) => ({ ...p, role: e.target.value }))}>
                   <option value="Student">Student</option>
                   <option value="Parent">Parent</option>
@@ -997,12 +1985,115 @@ export const AdminApp: React.FC = () => {
                 >
                   {newTestimonial.photo_url ? "✓ 1:1 Photo Cropped" : "Optional 1:1 Photo"}
                 </button>
-                <button type="submit" className="btn-primary">Save Testimonial</button>
+                <button type="submit" className="btn-primary">
+                  Save Testimonial
+                </button>
               </form>
             </div>
+
+            {testimonials.map((t, idx) => (
+              <div key={t.id} className="bento-card" style={{ display: "grid", gap: "0.65rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div>
+                    <strong>{t.name}</strong> ({t.role}) · {t.class_year}{" "}
+                    {!t.visible && <span style={{ color: "#fbbf24" }}>(Hidden)</span>}
+                    {t.is_sample && <span style={{ fontSize: "0.75rem", color: "#fbbf24", marginLeft: "0.4rem" }}>[Sample]</span>}
+                    <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>"{t.quote}"</div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}
+                      onClick={() => setEditingTestimonial(editingTestimonial?.id === t.id ? null : { ...t })}
+                    >
+                      {editingTestimonial?.id === t.id ? "Close Edit" : "Edit"}
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === 0}
+                      onClick={() => reorderItems("/api/admin/testimonials/reorder", testimonials, idx, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === testimonials.length - 1}
+                      onClick={() => reorderItems("/api/admin/testimonials/reorder", testimonials, idx, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", color: "#f87171", fontSize: "0.8rem" }}
+                      onClick={async () => {
+                        await adminFetch(`/api/admin/testimonials/${t.id}`, "DELETE");
+                        loadAllAdminData();
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {editingTestimonial?.id === t.id && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      await adminFetch(`/api/admin/testimonials/${t.id}`, "PUT", editingTestimonial);
+                      setToast("Testimonial updated!");
+                      setEditingTestimonial(null);
+                      loadAllAdminData();
+                    }}
+                    style={{ display: "grid", gap: "0.65rem", paddingTop: "0.65rem", borderTop: "1px solid var(--border-color)" }}
+                  >
+                    <textarea
+                      maxLength={500}
+                      required
+                      value={editingTestimonial.quote}
+                      onChange={(e) => setEditingTestimonial((p: any) => ({ ...p, quote: e.target.value }))}
+                    />
+                    <input
+                      required
+                      value={editingTestimonial.name}
+                      onChange={(e) => setEditingTestimonial((p: any) => ({ ...p, name: e.target.value }))}
+                    />
+                    <input
+                      placeholder="Class & Year"
+                      value={editingTestimonial.class_year}
+                      onChange={(e) => setEditingTestimonial((p: any) => ({ ...p, class_year: e.target.value }))}
+                    />
+                    <select
+                      value={editingTestimonial.role}
+                      onChange={(e) => setEditingTestimonial((p: any) => ({ ...p, role: e.target.value }))}
+                    >
+                      <option value="Student">Student</option>
+                      <option value="Parent">Parent</option>
+                    </select>
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={editingTestimonial.visible}
+                        onChange={(e) => setEditingTestimonial((p: any) => ({ ...p, visible: e.target.checked }))}
+                      />
+                      Visible
+                    </label>
+                    <button type="submit" className="btn-primary">
+                      Save Testimonial Changes
+                    </button>
+                  </form>
+                )}
+              </div>
+            ))}
           </div>
         )}
 
+        {/* ================= GALLERY ================= */}
         {tab === "gallery" && (
           <div style={{ display: "grid", gap: "1rem" }}>
             <div className="bento-card">
@@ -1011,12 +2102,18 @@ export const AdminApp: React.FC = () => {
                 onSubmit={async (e) => {
                   e.preventDefault();
                   await adminFetch("/api/admin/gallery", "POST", newGallery);
-                  setNewGallery({ image_url: "", caption: "" });
+                  setNewGallery({ image_url: "", caption: "", visible: true });
+                  setToast("Gallery photo saved!");
                   loadAllAdminData();
                 }}
                 style={{ display: "grid", gap: "0.75rem" }}
               >
-                <input placeholder="Caption (max 120 chars)" maxLength={120} value={newGallery.caption} onChange={(e) => setNewGallery((p) => ({ ...p, caption: e.target.value }))} />
+                <input
+                  placeholder="Caption (max 120 chars)"
+                  maxLength={120}
+                  value={newGallery.caption}
+                  onChange={(e) => setNewGallery((p) => ({ ...p, caption: e.target.value }))}
+                />
                 <button
                   type="button"
                   className="mobile-menu-btn"
@@ -1030,26 +2127,290 @@ export const AdminApp: React.FC = () => {
                 >
                   {newGallery.image_url ? "✓ 16:9 Image Cropped" : "Upload & Crop 16:9 Photo *"}
                 </button>
-                <button type="submit" className="btn-primary">Save Gallery Photo</button>
+                <button type="submit" className="btn-primary">
+                  Save Gallery Photo
+                </button>
               </form>
+            </div>
+
+            {gallery.map((g, idx) => (
+              <div key={g.id} className="bento-card" style={{ display: "grid", gap: "0.65rem" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
+                  <div style={{ display: "flex", gap: "0.75rem", alignItems: "center" }}>
+                    <img src={g.image_url} alt={g.caption} width={88} height={50} style={{ borderRadius: "0.4rem", objectFit: "cover" }} />
+                    <div>
+                      <strong>{g.caption || "Untitled Photo"}</strong>{" "}
+                      {!g.visible && <span style={{ color: "#fbbf24" }}>(Hidden)</span>}
+                      {g.is_sample && <span style={{ fontSize: "0.75rem", color: "#fbbf24", marginLeft: "0.4rem" }}>[Sample]</span>}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      style={{ padding: "0.35rem 0.75rem", fontSize: "0.8rem" }}
+                      onClick={() => setEditingGallery(editingGallery?.id === g.id ? null : { ...g })}
+                    >
+                      {editingGallery?.id === g.id ? "Close Edit" : "Edit"}
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === 0}
+                      onClick={() => reorderItems("/api/admin/gallery/reorder", gallery, idx, -1)}
+                    >
+                      ↑
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", fontSize: "0.78rem" }}
+                      disabled={idx === gallery.length - 1}
+                      onClick={() => reorderItems("/api/admin/gallery/reorder", gallery, idx, 1)}
+                    >
+                      ↓
+                    </button>
+                    <button
+                      type="button"
+                      className="mobile-menu-btn"
+                      style={{ display: "inline-flex", color: "#f87171", fontSize: "0.8rem" }}
+                      onClick={async () => {
+                        await adminFetch(`/api/admin/gallery/${g.id}`, "DELETE");
+                        loadAllAdminData();
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+
+                {editingGallery?.id === g.id && (
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      await adminFetch(`/api/admin/gallery/${g.id}`, "PUT", editingGallery);
+                      setToast("Gallery item updated!");
+                      setEditingGallery(null);
+                      loadAllAdminData();
+                    }}
+                    style={{ display: "grid", gap: "0.65rem", paddingTop: "0.65rem", borderTop: "1px solid var(--border-color)" }}
+                  >
+                    <input
+                      placeholder="Caption (max 120 chars)"
+                      maxLength={120}
+                      value={editingGallery.caption}
+                      onChange={(e) => setEditingGallery((p: any) => ({ ...p, caption: e.target.value }))}
+                    />
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={editingGallery.visible}
+                        onChange={(e) => setEditingGallery((p: any) => ({ ...p, visible: e.target.checked }))}
+                      />
+                      Visible
+                    </label>
+                    <button type="submit" className="btn-primary">
+                      Save Gallery Changes
+                    </button>
+                  </form>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* ================= LEADS INBOX ================= */}
+        {tab === "leads" && (
+          <div className="bento-card">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <h2 style={{ margin: 0 }}>Student Leads Inbox ({filteredLeads.length})</h2>
+              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", alignItems: "center" }}>
+                <select value={leadFilterStatus} onChange={(e) => setLeadFilterStatus(e.target.value)}>
+                  <option value="All">All Statuses</option>
+                  <option value="New">New</option>
+                  <option value="Contacted">Contacted</option>
+                  <option value="Enrolled">Enrolled</option>
+                </select>
+                <select value={leadFilterBranch} onChange={(e) => setLeadFilterBranch(e.target.value)}>
+                  <option value="All">All Branches</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={String(b.id)}>
+                      {b.name}
+                    </option>
+                  ))}
+                </select>
+                <a href="/api/admin/leads/export.csv" className="btn-primary">
+                  ⬇ Export CSV (UTF-8)
+                </a>
+              </div>
+            </div>
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.88rem" }}>
+                <thead>
+                  <tr style={{ textAlign: "left", borderBottom: "1px solid var(--border-color)" }}>
+                    <th style={{ padding: "0.5rem" }}>Time (IST)</th>
+                    <th style={{ padding: "0.5rem" }}>Student</th>
+                    <th style={{ padding: "0.5rem" }}>Mobile</th>
+                    <th style={{ padding: "0.5rem" }}>Class / Stream</th>
+                    <th style={{ padding: "0.5rem" }}>Branch</th>
+                    <th style={{ padding: "0.5rem" }}>Status</th>
+                    <th style={{ padding: "0.5rem" }}>Counsellor Note</th>
+                    <th style={{ padding: "0.5rem" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredLeads.map((l) => (
+                    <tr key={l.id} style={{ borderBottom: "1px solid var(--border-color)" }}>
+                      <td style={{ padding: "0.5rem" }}>{l.created_at}</td>
+                      <td style={{ padding: "0.5rem", fontWeight: 700 }}>{l.student_name}</td>
+                      <td style={{ padding: "0.5rem" }}>{l.mobile}</td>
+                      <td style={{ padding: "0.5rem" }}>
+                        Class {l.class_name} · {l.stream}
+                      </td>
+                      <td style={{ padding: "0.5rem" }}>{l.branch_name}</td>
+                      <td style={{ padding: "0.5rem" }}>
+                        <select
+                          value={l.status}
+                          onChange={async (e) => {
+                            await adminFetch(`/api/admin/leads/${l.id}`, "PATCH", {
+                              status: e.target.value,
+                              note: leadNotes[l.id] ?? l.note,
+                            });
+                            loadAllAdminData();
+                          }}
+                        >
+                          <option value="New">New</option>
+                          <option value="Contacted">Contacted</option>
+                          <option value="Enrolled">Enrolled</option>
+                        </select>
+                      </td>
+                      <td style={{ padding: "0.5rem" }}>
+                        <div style={{ display: "flex", gap: "0.35rem" }}>
+                          <input
+                            placeholder="Short note..."
+                            value={leadNotes[l.id] ?? ""}
+                            onChange={(e) => setLeadNotes((p) => ({ ...p, [l.id]: e.target.value }))}
+                            style={{ width: "130px" }}
+                          />
+                          <button
+                            type="button"
+                            className="mobile-menu-btn"
+                            style={{ display: "inline-flex", fontSize: "0.75rem" }}
+                            onClick={async () => {
+                              await adminFetch(`/api/admin/leads/${l.id}`, "PATCH", {
+                                status: l.status,
+                                note: leadNotes[l.id] ?? "",
+                              });
+                              setToast("Lead note saved!");
+                              loadAllAdminData();
+                            }}
+                          >
+                            Save
+                          </button>
+                        </div>
+                      </td>
+                      <td style={{ padding: "0.5rem", display: "flex", gap: "0.4rem" }}>
+                        <a
+                          href={l.whatsapp_url}
+                          target="_blank"
+                          rel="noopener"
+                          className="btn-secondary"
+                          style={{ padding: "0.3rem 0.6rem", fontSize: "0.78rem" }}
+                        >
+                          WhatsApp
+                        </a>
+                        <button
+                          type="button"
+                          className="mobile-menu-btn"
+                          style={{ display: "inline-flex", color: "#f87171", fontSize: "0.78rem" }}
+                          onClick={async () => {
+                            await adminFetch(`/api/admin/leads/${l.id}`, "DELETE");
+                            loadAllAdminData();
+                          }}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
 
+        {/* ================= GLOBAL CONTACTS & SOCIALS ================= */}
         {tab === "settings" && settings && (
           <div className="bento-card" style={{ display: "grid", gap: "0.75rem" }}>
             <h2 style={{ marginTop: 0 }}>Global Contact Numbers & Social Links</h2>
-            <input placeholder="Main Phone" value={settings.global_phone} onChange={(e) => setSettings((p: any) => ({ ...p, global_phone: e.target.value }))} />
-            <input placeholder="Main WhatsApp" value={settings.global_whatsapp} onChange={(e) => setSettings((p: any) => ({ ...p, global_whatsapp: e.target.value }))} />
-            <input placeholder="Instagram Handle" value={settings.instagram_handle} onChange={(e) => setSettings((p: any) => ({ ...p, instagram_handle: e.target.value }))} />
-            <textarea placeholder="WhatsApp Inquiry Template" value={settings.whatsapp_template} onChange={(e) => setSettings((p: any) => ({ ...p, whatsapp_template: e.target.value }))} />
+            <label>
+              Brand Name
+              <input
+                placeholder="Shikshanama (शिक्षाNama)"
+                value={settings.brand_name}
+                onChange={(e) => setSettings((p: any) => ({ ...p, brand_name: e.target.value }))}
+              />
+            </label>
+            <label>
+              Main Institute Phone (+91...)
+              <input
+                placeholder="Main Phone"
+                value={settings.global_phone}
+                onChange={(e) => setSettings((p: any) => ({ ...p, global_phone: e.target.value }))}
+              />
+            </label>
+            <label>
+              Main Institute WhatsApp (+91...)
+              <input
+                placeholder="Main WhatsApp"
+                value={settings.global_whatsapp}
+                onChange={(e) => setSettings((p: any) => ({ ...p, global_whatsapp: e.target.value }))}
+              />
+            </label>
+            <label>
+              Instagram Handle (without @)
+              <input
+                placeholder="shikshanamaofficial"
+                value={settings.instagram_handle}
+                onChange={(e) => setSettings((p: any) => ({ ...p, instagram_handle: e.target.value }))}
+              />
+            </label>
+            <label>
+              YouTube Channel URL (optional)
+              <input
+                placeholder="https://youtube.com/..."
+                value={settings.youtube_url}
+                onChange={(e) => setSettings((p: any) => ({ ...p, youtube_url: e.target.value }))}
+              />
+            </label>
+            <label>
+              Facebook Page URL (optional)
+              <input
+                placeholder="https://facebook.com/..."
+                value={settings.facebook_url}
+                onChange={(e) => setSettings((p: any) => ({ ...p, facebook_url: e.target.value }))}
+              />
+            </label>
+            <label>
+              Default WhatsApp Inquiry Message
+              <textarea
+                placeholder="WhatsApp Inquiry Template"
+                value={settings.whatsapp_template}
+                onChange={(e) => setSettings((p: any) => ({ ...p, whatsapp_template: e.target.value }))}
+              />
+            </label>
             <button
               type="button"
               className="btn-primary"
               onClick={async () => {
-                await adminFetch("/api/admin/settings", "PUT", settings);
-                setToast("Settings saved!");
-                loadAllAdminData();
+                try {
+                  await adminFetch("/api/admin/settings", "PUT", settings);
+                  setToast("Global Contacts & Social Settings saved!");
+                  loadAllAdminData();
+                } catch (err: any) {
+                  setToast(err.message);
+                }
               }}
             >
               Save Settings
@@ -1057,6 +2418,7 @@ export const AdminApp: React.FC = () => {
           </div>
         )}
 
+        {/* ================= STAFF ACCOUNTS ================= */}
         {tab === "staff" && (
           <div style={{ display: "grid", gap: "1rem" }}>
             <div className="bento-card">
@@ -1066,13 +2428,28 @@ export const AdminApp: React.FC = () => {
                   e.preventDefault();
                   await adminFetch("/api/admin/staff", "POST", newStaff);
                   setNewStaff({ email: "", password: "" });
+                  setToast("Staff account created!");
                   loadAllAdminData();
                 }}
                 style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}
               >
-                <input type="email" required placeholder="Staff Email" value={newStaff.email} onChange={(e) => setNewStaff((p) => ({ ...p, email: e.target.value }))} />
-                <input type="password" required placeholder="Password (min 6 chars)" value={newStaff.password} onChange={(e) => setNewStaff((p) => ({ ...p, password: e.target.value }))} />
-                <button type="submit" className="btn-primary">Add Staff</button>
+                <input
+                  type="email"
+                  required
+                  placeholder="Staff Email"
+                  value={newStaff.email}
+                  onChange={(e) => setNewStaff((p) => ({ ...p, email: e.target.value }))}
+                />
+                <input
+                  type="password"
+                  required
+                  placeholder="Password (min 6 chars)"
+                  value={newStaff.password}
+                  onChange={(e) => setNewStaff((p) => ({ ...p, password: e.target.value }))}
+                />
+                <button type="submit" className="btn-primary">
+                  Add Staff
+                </button>
               </form>
             </div>
             {staff.map((st) => (
