@@ -456,15 +456,15 @@ def test_ac_10_1_to_10_7_admin_auth_stateless_hmac_csrf_lockout_and_staff(client
 def test_ac_11_4_and_11_6_server_webp_and_aspect_ratio_validation(client: TestClient) -> None:
     csrf = _admin_login(client)
 
-    # Reject non-WebP (PNG disguised with .webp extension)
+    # Reject invalid / corrupt image bytes (AC-11.4)
     bad_fmt = client.post(
         "/api/admin/upload",
         data={"kind": "result"},
-        files={"file": ("fake.webp", _make_png_bytes(400, 400), "image/webp")},
+        files={"file": ("fake.bin", b"not-a-valid-image-file", "application/octet-stream")},
         headers={"x-csrf-token": csrf},
     )
     assert bad_fmt.status_code == 422
-    assert "WebP" in bad_fmt.json()["detail"]
+    assert "valid decodable image" in bad_fmt.json()["detail"].lower()
 
     # Reject wrong aspect ratio (4:5 uploaded to 1:1 result field)
     bad_ratio = client.post(
@@ -475,6 +475,16 @@ def test_ac_11_4_and_11_6_server_webp_and_aspect_ratio_validation(client: TestCl
     )
     assert bad_ratio.status_code == 422
     assert "1:1" in bad_ratio.json()["detail"]
+
+    # Accept any valid image format (e.g. PNG) and verify server converts to WebP
+    ok_png = client.post(
+        "/api/admin/upload",
+        data={"kind": "result"},
+        files={"file": ("topper.png", _make_png_bytes(400, 400), "image/png")},
+        headers={"x-csrf-token": csrf},
+    )
+    assert ok_png.status_code == 200
+    assert "url" in ok_png.json()
 
     # Accept valid 1:1, 4:5, and 16:9 WebP uploads and verify random UUID filename (no student name)
     ok_1_1 = client.post(

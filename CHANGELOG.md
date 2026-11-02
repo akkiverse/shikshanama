@@ -6,6 +6,8 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ## [Unreleased]
 
 ### Added
+- **CR-0004:** Universal high-resolution photo upload support (up to 25 MB source files, any standard format JPEG/PNG/WebP/HEIC with server-side WebP conversion and aspect ratio enforcement) and adaptive client-side canvas cropper (`AC-11.4`, `AC-11.5`, `AC-11.8`).
+- **CR-0004:** Complete visual restyling of Shikshanama with premium Navy (`#0B2545`) and Muted Gold (`#C9A227`) design system, Google Fonts (`Playfair Display`, `Poppins`, `DM Sans`, `Noto Sans Devanagari`), brand favicons (ico, svg, apple-touch-icon, android-chrome, site.webmanifest), 1200x630 OpenGraph assets, and WCAG AA contrast across Light & Dark themes (`AC-24.1`, `AC-24.2`).
 - **CR-0003:** Full inline Edit and Reorder (`↑`/`↓`) across all React Admin CMS managers (`src/admin/AdminApp.tsx`), including Hero trust counters (Total Toppers, Years of Excellence), Section Headings, Branch addresses & contact details (including West Patel Nagar Flagship), Courses, Batches, Results, Founders, Testimonials, and Gallery (`AC-12.7`, `AC-14.6`, `AC-14.7`, `AC-15.5`, `AC-18.5`).
 - **CR-0003:** Automatic filtering of sample content (`is_sample = 1`) on public pages when `DEMO_MODE=false` is set in the environment or toggled in Admin settings, while keeping the Flagship branch, Hero counters, and Courses live as institute defaults (`AC-18.5`).
 - **CR-0003:** Sleek modern tech visual upgrade (electric-indigo/violet + cyan radial gradient glow, modern frosted-glass blur, refined borders and cards) and streamlined English-only UI, keeping Hindi script strictly for the brand logo **<span className="hi-part">शिक्षा</span>Nama**.

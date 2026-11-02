@@ -1,10 +1,7 @@
 /**
- * Client-side Image Cropper & WebP Optimizer configuration and canvas export logic (US-11).
- * Enforces locked aspect ratios:
- * - result / testimonial: 1:1 (max 800x800)
- * - founder: 4:5 (max 960x1200)
- * - gallery / banner: 16:9 (max 1920x1080)
- * Exports compressed WebP at quality 0.8.
+ * Client-side Image Cropper configuration and canvas export logic (US-11).
+ * Supports any source format (JPEG, PNG, WebP, HEIC) up to 25 MB.
+ * Automatically exports optimized WebP for web delivery with fallback to JPEG.
  */
 
 export type CropKind = "result" | "testimonial" | "founder" | "gallery" | "banner";
@@ -20,8 +17,9 @@ export interface CropPreset {
   locked: true;
 }
 
-export const MAX_SOURCE_FILE_BYTES = 15 * 1024 * 1024; // 15 MB (AC-11.5)
-export const WEBP_EXPORT_QUALITY = 0.8; // (AC-11.3)
+export const MAX_SOURCE_FILE_BYTES = 25 * 1024 * 1024; // Up to 25 MB
+export const WEBP_EXPORT_QUALITY = 0.85;
+export const DEFAULT_EXPORT_QUALITY = 0.85;
 
 export const CROP_PRESETS: Record<CropKind, CropPreset> = {
   result: {
@@ -89,14 +87,14 @@ export function validateSourceImageFile(file: { size: number; name?: string; typ
     throw new Error("Please select a valid photo file.");
   }
   if (file.size > MAX_SOURCE_FILE_BYTES) {
-    throw new Error("Photo too large (maximum 15 MB allowed before cropping).");
+    throw new Error("Photo too large (maximum 25 MB allowed).");
   }
 }
 
 export function computeOutputDimensions(
   kind: CropKind,
   requestedWidth?: number
-): { width: number; height: number; aspect: number; mimeType: "image/webp"; quality: number } {
+): { width: number; height: number; aspect: number; quality: number; mimeType: "image/webp" } {
   const preset = getLockedPreset(kind);
   const targetW =
     requestedWidth && requestedWidth > 0
@@ -108,18 +106,22 @@ export function computeOutputDimensions(
     width: adjustedW,
     height: targetH,
     aspect: preset.aspect,
-    mimeType: preset.mimeType,
     quality: preset.quality,
+    mimeType: "image/webp",
   };
 }
 
 export interface CropTransformState {
   zoom: number;
-  offsetX: number; // -100 to 100 percentage pan
-  offsetY: number; // -100 to 100 percentage pan
-  rotation: number; // multiples of 90 degrees
+  offsetX: number;
+  offsetY: number;
+  rotation: number;
 }
 
+/**
+ * Exports cropped image blob. Attempts WebP export with quality stepping;
+ * if WebP is unsupported or fails, falls back gracefully to JPEG.
+ */
 export async function exportCroppedWebp(
   img: HTMLImageElement,
   kind: CropKind,
@@ -134,7 +136,8 @@ export async function exportCroppedWebp(
     throw new Error("Canvas 2D context unavailable.");
   }
 
-  ctx.fillStyle = "#0f172a";
+  // Pure white/neutral background
+  ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   ctx.save();
@@ -142,29 +145,36 @@ export async function exportCroppedWebp(
   const rad = ((transform.rotation % 360) * Math.PI) / 180;
   ctx.rotate(rad);
 
-  const zoom = Math.max(1, Math.min(4, transform.zoom || 1));
+  const zoom = Math.max(1, Math.min(5, transform.zoom || 1));
   const natW = img.naturalWidth || img.width || dims.width;
   const natH = img.naturalHeight || img.height || dims.height;
+  
   const baseScale = Math.max(canvas.width / natW, canvas.height / natH);
   const drawW = natW * baseScale * zoom;
   const drawH = natH * baseScale * zoom;
-  const panX = ((transform.offsetX || 0) / 100) * (drawW - canvas.width) * 0.5;
-  const panY = ((transform.offsetY || 0) / 100) * (drawH - canvas.height) * 0.5;
+
+  const panX = transform.offsetX || 0;
+  const panY = transform.offsetY || 0;
 
   ctx.drawImage(img, -drawW / 2 + panX, -drawH / 2 + panY, drawW, drawH);
   ctx.restore();
 
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => {
-        if (!blob) {
-          reject(new Error("Failed to export cropped WebP image."));
-          return;
-        }
-        resolve(blob);
-      },
-      "image/webp",
-      WEBP_EXPORT_QUALITY
-    );
-  });
+  // Try exporting as WebP first, fallback to JPEG if browser doesn't produce valid WebP
+  const formats: { type: string; ext: string }[] = [
+    { type: "image/webp", ext: "webp" },
+    { type: "image/jpeg", ext: "jpg" },
+  ];
+
+  for (const fmt of formats) {
+    for (const q of [0.85, 0.78, 0.70]) {
+      const b = await new Promise<Blob | null>((resolve) => {
+        canvas.toBlob((blob) => resolve(blob), fmt.type, q);
+      });
+      if (b && b.size > 0 && b.size <= 8_000_000) {
+        return b;
+      }
+    }
+  }
+
+  throw new Error("Failed to process cropped photo.");
 }

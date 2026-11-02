@@ -10,7 +10,7 @@ declare global {
 
 const SectionHeading: React.FC<{ en: string; hi?: string }> = ({ en }) => (
   <div style={{ marginBottom: "1.35rem" }}>
-    <h2 style={{ margin: 0, fontSize: "clamp(1.5rem, 3vw, 2.15rem)", fontWeight: 800, letterSpacing: "-0.02em" }}>
+    <h2 className="section-title">
       {en}
     </h2>
   </div>
@@ -552,19 +552,7 @@ export const App: React.FC = () => {
       {/* Hero Section */}
       <section className="container section-animate" style={{ paddingTop: "2.75rem", paddingBottom: "2.75rem" }}>
         <div className="bento-card" style={{ padding: "clamp(1.5rem, 4vw, 3rem)" }}>
-          <span
-            style={{
-              display: "inline-block",
-              padding: "0.35rem 0.95rem",
-              borderRadius: "9999px",
-              background: "var(--badge-bg)",
-              color: "var(--badge-text)",
-              fontWeight: 700,
-              fontSize: "0.85rem",
-              marginBottom: "1rem",
-              border: "1px solid var(--border-color)",
-            }}
-          >
+          <span className="badge" style={{ marginBottom: "1rem" }}>
             West Patel Nagar's Premier Coaching · Classes 6 to 12
           </span>
           <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.4rem)", fontWeight: 900, margin: "0 0 1rem", lineHeight: 1.2, letterSpacing: "-0.03em" }}>
@@ -607,17 +595,12 @@ export const App: React.FC = () => {
               {hero_stats.map((st: any) => (
                 <div
                   key={st.id}
-                  style={{
-                    padding: "1.1rem",
-                    borderRadius: "1rem",
-                    background: "rgba(255, 255, 255, 0.03)",
-                    border: "1px solid var(--border-color)",
-                  }}
+                  className="stat-card"
                 >
-                  <div style={{ fontSize: "1.85rem", fontWeight: 900, color: "var(--accent-secondary)", letterSpacing: "-0.02em" }}>
+                  <div className="stat-value">
                     <CountUpValue valueText={st.value} />
                   </div>
-                  <div style={{ fontSize: "0.84rem", color: "var(--text-secondary)", fontWeight: 600, marginTop: "0.2rem" }}>
+                  <div className="stat-label">
                     {st.label}
                   </div>
                 </div>
