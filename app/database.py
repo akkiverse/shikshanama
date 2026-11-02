@@ -20,7 +20,7 @@ from app.security import hash_password
 
 IST = timezone(timedelta(hours=5, minutes=30))
 
-FLAGSHIP_NAME = "West Patel Nagar (Flagship)"
+FLAGSHIP_NAME = "West Patel Nagar"
 FLAGSHIP_ADDRESS = (
     "Ground Floor, E-42, Street Number 2, near Government School, Block E, "
     "West Patel Nagar, Patel Nagar, New Delhi, Delhi, 110008"
@@ -714,7 +714,7 @@ def _seed_demo_sample_content(db: DBAdapter, flagship_id: int) -> None:
 
     # 6 sample 16:9 gallery images
     gallery_captions = [
-        "Interactive Smart Classroom at West Patel Nagar Flagship (Sample)",
+        "Interactive Smart Classroom at West Patel Nagar (Sample)",
         "Annual Board Toppers Felicitation Ceremony · सम्मान समारोह (Sample)",
         "One-on-One Doubt Solving & Mentorship Desk (Sample)",
         "Sunday OMR & CBSE Pattern Mock Test Session (Sample)",

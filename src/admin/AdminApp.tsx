@@ -1061,7 +1061,7 @@ export const AdminApp: React.FC = () => {
                     checked={newBranch.is_flagship}
                     onChange={(e) => setNewBranch((p) => ({ ...p, is_flagship: e.target.checked }))}
                   />
-                  Mark as Flagship
+                  Mark as Primary Branch
                 </label>
                 <button type="submit" className="btn-primary">
                   Save Branch
@@ -1073,7 +1073,7 @@ export const AdminApp: React.FC = () => {
               <div key={b.id} className="bento-card" style={{ display: "grid", gap: "0.75rem" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "0.5rem" }}>
                   <div>
-                    <strong>{b.name}</strong> {b.is_flagship && "⭐ Flagship"}{" "}
+                    <strong>{b.name}</strong> {b.is_flagship && "⭐ Primary"}{" "}
                     {!b.active && <span style={{ color: "#fbbf24" }}>(Inactive)</span>}
                     {b.is_sample && !b.is_flagship && (
                       <span style={{ fontSize: "0.75rem", color: "#fbbf24", marginLeft: "0.4rem" }}>[Sample]</span>
@@ -1183,7 +1183,7 @@ export const AdminApp: React.FC = () => {
                         checked={editingBranch.is_flagship}
                         onChange={(e) => setEditingBranch((p: any) => ({ ...p, is_flagship: e.target.checked }))}
                       />
-                      Flagship Branch
+                      Primary Branch
                     </label>
                     <label style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
                       <input

@@ -684,7 +684,7 @@ export const App: React.FC = () => {
           </div>
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(265px, 1fr))", gap: "1.1rem" }}>
-            {(pathname === "/" && classFilter === "All" && streamFilter === "All" && yearFilter === "All"
+            {(pathname === "/" && classFilter === "All" && streamFilter === "All" && yearFilter === "All" && pinned_results && pinned_results.length > 0
               ? pinned_results
               : filteredResults
             ).map((r: any) => (
@@ -884,44 +884,33 @@ export const App: React.FC = () => {
       <section id="branches" className="container section-animate" style={{ paddingBottom: "2.75rem" }}>
         <SectionHeading en={headings.branches?.en || "Our Branches"} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.1rem" }}>
-          {(branches || []).map((b: any) => (
-            <div key={b.id} className="bento-card" data-testid="branch-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.55rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.15rem" }}>{b.name}</h3>
-                {b.is_flagship && (
-                  <span
-                    style={{
-                      fontSize: "0.75rem",
-                      fontWeight: 800,
-                      padding: "0.22rem 0.65rem",
-                      borderRadius: "9999px",
-                      background: "var(--badge-bg)",
-                      color: "var(--badge-text)",
-                      border: "1px solid var(--border-color)",
-                    }}
-                  >
-                    Flagship
-                  </span>
-                )}
-              </div>
-              <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginBottom: "1rem", lineHeight: 1.55 }}>{b.address}</p>
-              <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
-                <a href={b.maps_url} target="_blank" rel="noopener" className="mobile-menu-btn" style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.82rem" }}>
-                  📍 Directions
-                </a>
-                {b.tel_url && (
-                  <a href={b.tel_url} className="mobile-menu-btn" style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.82rem" }}>
-                    📞 Call {b.phone}
+          {(branches || []).map((b: any) => {
+            const cleanName = (b.name || "").replace(/\s*\([Ff]lagship\)/g, "").trim();
+            const cleanAddress = (b.address || "").replace(/\s*\([Ff]lagship\)/g, "").trim();
+            return (
+              <div key={b.id} className="bento-card" data-testid="branch-card">
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.55rem" }}>
+                  <h3 style={{ margin: 0, fontSize: "1.15rem" }}>{cleanName}</h3>
+                </div>
+                <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginBottom: "1rem", lineHeight: 1.55 }}>{cleanAddress}</p>
+                <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
+                  <a href={b.maps_url} target="_blank" rel="noopener" className="mobile-menu-btn" style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.82rem" }}>
+                    📍 Directions
                   </a>
-                )}
-                {b.whatsapp_url && (
-                  <a href={b.whatsapp_url} target="_blank" rel="noopener" className="btn-secondary" style={{ padding: "0.45rem 0.85rem", fontSize: "0.82rem" }}>
-                    💬 WhatsApp
-                  </a>
-                )}
+                  {b.tel_url && (
+                    <a href={b.tel_url} className="mobile-menu-btn" style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.82rem" }}>
+                      📞 Call {b.phone}
+                    </a>
+                  )}
+                  {b.whatsapp_url && (
+                    <a href={b.whatsapp_url} target="_blank" rel="noopener" className="btn-secondary" style={{ padding: "0.45rem 0.85rem", fontSize: "0.82rem" }}>
+                      💬 WhatsApp
+                    </a>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -1097,7 +1086,7 @@ export const App: React.FC = () => {
 
       <footer className="container" style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1.75rem", fontSize: "0.86rem", color: "var(--text-secondary)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>
-          <strong>{settings.brand_name}</strong> · West Patel Nagar, New Delhi - 110008
+          <strong>{settings.brand_name}</strong> · {(branches?.[0]?.address || "West Patel Nagar, New Delhi").replace(/\s*\([Ff]lagship\)/g, "").trim()}
         </div>
         <div style={{ display: "flex", gap: "1.25rem" }}>
           <a href={settings.instagram_url} target="_blank" rel="noopener" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>
