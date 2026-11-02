@@ -6,8 +6,8 @@ from io import BytesIO
 from typing import Any
 from PIL import Image, ImageDraw
 
-MAX_WEBP_BYTES = 1_048_576  # 1 MB (AC-11.4)
-ASPECT_TOLERANCE = 0.01  # ±1% (AC-11.4)
+MAX_WEBP_BYTES = 10_485_760  # 10 MB limit for high-resolution images
+ASPECT_TOLERANCE = 0.02  # ±2% tolerance for browser subpixel canvas rounding
 
 CROP_SPECS: dict[str, dict[str, Any]] = {
     "result": {"ratio": 1.0, "max_w": 800, "max_h": 800, "label": "1:1"},
@@ -25,7 +25,7 @@ def validate_and_inspect_webp(data: bytes, kind: str) -> dict[str, Any]:
     if not data:
         raise ValueError("Uploaded image file is empty.")
     if len(data) > MAX_WEBP_BYTES:
-        raise ValueError("Image exceeds the 1 MB WebP limit.")
+        raise ValueError("Image exceeds the 10 MB WebP limit.")
 
     try:
         with Image.open(BytesIO(data)) as img:

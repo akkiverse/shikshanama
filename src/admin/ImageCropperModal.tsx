@@ -30,8 +30,9 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     rotation: 0,
   });
   const [uploading, setUploading] = useState<boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const dragStartRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null);
+  const dragStartRef = useRef<{ startX: number; startY: number; initOx: number; initOy: number } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -55,27 +56,35 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(true);
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     dragStartRef.current = {
-      x: e.clientX,
-      y: e.clientY,
-      ox: transform.offsetX,
-      oy: transform.offsetY,
+      startX: e.clientX,
+      startY: e.clientY,
+      initOx: transform.offsetX,
+      initOy: transform.offsetY,
     };
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStartRef.current) return;
-    const dx = e.clientX - dragStartRef.current.x;
-    const dy = e.clientY - dragStartRef.current.y;
+    if (!dragStartRef.current || !isDragging) return;
+    const dx = e.clientX - dragStartRef.current.startX;
+    const dy = e.clientY - dragStartRef.current.startY;
     setTransform((prev) => ({
       ...prev,
-      offsetX: Math.max(-100, Math.min(100, dragStartRef.current!.ox + dx * 0.45)),
-      offsetY: Math.max(-100, Math.min(100, dragStartRef.current!.oy + dy * 0.45)),
+      offsetX: dragStartRef.current!.initOx + dx,
+      offsetY: dragStartRef.current!.initOy + dy,
     }));
   };
 
-  const handlePointerUp = () => {
+  const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    setIsDragging(false);
     dragStartRef.current = null;
+    try {
+      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    } catch {
+      // Ignored
+    }
   };
 
   const handleCropAndUpload = async () => {
@@ -95,7 +104,7 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         headers: { "x-csrf-token": csrfToken },
         body: formData,
       });
-      const data = await resp.json();
+      const data = await resp.json().catch(() => ({}));
       if (!resp.ok) {
         throw new Error(data.detail || "Upload failed");
       }
@@ -107,8 +116,8 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
     }
   };
 
-  const previewHeight = 220;
-  const previewWidth = Math.round(previewHeight * preset.aspect);
+  const previewBoxHeight = 260;
+  const previewBoxWidth = Math.min(480, Math.round(previewBoxHeight * preset.aspect));
 
   return (
     <div
@@ -119,44 +128,48 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
         position: "fixed",
         inset: 0,
         zIndex: 100,
-        background: "rgba(9, 13, 22, 0.86)",
+        background: "rgba(7, 9, 14, 0.88)",
+        backdropFilter: "blur(16px)",
+        WebkitBackdropFilter: "blur(16px)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         padding: "1rem",
       }}
     >
-      <div className="bento-card" style={{ maxWidth: "560px", width: "100%" }}>
+      <div className="bento-card" style={{ maxWidth: "580px", width: "100%", background: "#0d121f", border: "1px solid rgba(255, 255, 255, 0.12)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-          <h3 style={{ margin: 0 }}>
-            Crop & Optimize Photo · Locked <code>{preset.aspectLabel}</code> WebP
+          <h3 style={{ margin: 0, fontSize: "1.2rem", fontWeight: 800 }}>
+            Photo Cropper · <span style={{ color: "var(--accent-secondary)" }}>{preset.aspectLabel}</span>
           </h3>
-          <button type="button" onClick={onCancel} className="mobile-menu-btn">
+          <button type="button" onClick={onCancel} className="mobile-menu-btn" style={{ display: "inline-flex" }}>
             ✕
           </button>
         </div>
-        <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginTop: 0 }}>
-          Aspect ratio is locked to <strong>{preset.aspectLabel}</strong> (max {preset.maxWidth}×{preset.maxHeight}px) and
-          automatically converted to compressed <code>.webp</code>.
+        <p style={{ fontSize: "0.86rem", color: "var(--text-secondary)", marginTop: 0, lineHeight: 1.5 }}>
+          Upload any high-quality photo (up to 25 MB). Pan and zoom below to frame the photo perfectly within the {preset.aspectLabel} crop window.
         </p>
 
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/heic"
-          onChange={handleFileChange}
-          aria-label="Choose source image"
-          style={{ marginBottom: "0.85rem", width: "100%" }}
-        />
+        <div style={{ marginBottom: "1rem" }}>
+          <input
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            aria-label="Choose source image"
+            style={{ width: "100%", padding: "0.55rem", borderRadius: "0.6rem", background: "rgba(255, 255, 255, 0.05)" }}
+          />
+        </div>
 
         {error && (
           <div
             role="alert"
             style={{
-              padding: "0.6rem 0.85rem",
-              background: "rgba(239,68,68,0.16)",
-              color: "#f87171",
-              borderRadius: "0.5rem",
-              marginBottom: "0.75rem",
+              padding: "0.65rem 0.95rem",
+              background: "rgba(244, 63, 94, 0.18)",
+              border: "1px solid rgba(244, 63, 94, 0.35)",
+              color: "#fb7185",
+              borderRadius: "0.65rem",
+              marginBottom: "1rem",
               fontSize: "0.88rem",
             }}
           >
@@ -170,51 +183,58 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
+              onPointerCancel={handlePointerUp}
               style={{
-                width: `${previewWidth}px`,
-                height: `${previewHeight}px`,
-                margin: "0 auto 0.85rem",
+                width: `${previewBoxWidth}px`,
+                height: `${previewBoxHeight}px`,
+                margin: "0 auto 1.25rem",
                 overflow: "hidden",
-                borderRadius: kind === "result" || kind === "testimonial" ? "50%" : "0.75rem",
-                border: "3px solid var(--accent-primary)",
+                borderRadius: kind === "result" || kind === "testimonial" ? "50%" : "1rem",
+                border: "2px solid var(--accent-primary)",
+                boxShadow: "0 0 24px var(--accent-glow)",
                 position: "relative",
                 touchAction: "none",
-                cursor: "grab",
-                background: "#0f172a",
+                cursor: isDragging ? "grabbing" : "grab",
+                background: "#07090e",
+                userSelect: "none",
               }}
             >
               <img
                 ref={imgRef}
                 src={sourceUrl}
                 alt="Crop live preview"
+                draggable={false}
                 style={{
                   width: "100%",
                   height: "100%",
-                  objectFit: "cover",
-                  transform: `translate(${transform.offsetX * 0.4}px, ${transform.offsetY * 0.4}px) scale(${transform.zoom}) rotate(${transform.rotation}deg)`,
+                  objectFit: "contain",
+                  transform: `translate(${transform.offsetX}px, ${transform.offsetY}px) scale(${transform.zoom}) rotate(${transform.rotation}deg)`,
                   transformOrigin: "center center",
                   pointerEvents: "none",
+                  transition: isDragging ? "none" : "transform 0.1s ease",
                 }}
               />
             </div>
 
-            <div style={{ display: "grid", gap: "0.6rem", marginBottom: "1rem" }}>
-              <label style={{ fontSize: "0.85rem" }}>
-                Zoom ({transform.zoom.toFixed(1)}x)
-                <input
-                  type="range"
-                  min="1"
-                  max="3.5"
-                  step="0.05"
-                  value={transform.zoom}
-                  onChange={(e) => setTransform((p) => ({ ...p, zoom: parseFloat(e.target.value) }))}
-                  style={{ width: "100%" }}
-                />
-              </label>
-              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center" }}>
+            <div style={{ display: "grid", gap: "0.75rem", marginBottom: "1.25rem", background: "rgba(255, 255, 255, 0.02)", padding: "0.85rem", borderRadius: "0.85rem", border: "1px solid var(--border-color)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.85rem", fontWeight: 600 }}>
+                <span>Zoom & Frame</span>
+                <span style={{ color: "var(--accent-secondary)" }}>{transform.zoom.toFixed(2)}x</span>
+              </div>
+              <input
+                type="range"
+                min="1"
+                max="4"
+                step="0.05"
+                value={transform.zoom}
+                onChange={(e) => setTransform((p) => ({ ...p, zoom: parseFloat(e.target.value) }))}
+                style={{ width: "100%" }}
+              />
+              <div style={{ display: "flex", gap: "0.5rem", justifyContent: "center", flexWrap: "wrap" }}>
                 <button
                   type="button"
                   className="mobile-menu-btn"
+                  style={{ display: "inline-flex", fontSize: "0.82rem" }}
                   onClick={() => setTransform((p) => ({ ...p, rotation: (p.rotation + 90) % 360 }))}
                 >
                   ↻ Rotate 90°
@@ -222,17 +242,18 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
                 <button
                   type="button"
                   className="mobile-menu-btn"
+                  style={{ display: "inline-flex", fontSize: "0.82rem" }}
                   onClick={() => setTransform({ zoom: 1, offsetX: 0, offsetY: 0, rotation: 0 })}
                 >
-                  Reset
+                  Reset Position
                 </button>
               </div>
             </div>
           </div>
         )}
 
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.65rem" }}>
-          <button type="button" onClick={onCancel} className="mobile-menu-btn">
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem" }}>
+          <button type="button" onClick={onCancel} className="mobile-menu-btn" style={{ display: "inline-flex" }}>
             Cancel
           </button>
           <button
@@ -241,10 +262,12 @@ export const ImageCropperModal: React.FC<ImageCropperModalProps> = ({
             onClick={handleCropAndUpload}
             className="btn-primary"
           >
-            {uploading ? "Converting to WebP..." : `Crop (${preset.aspectLabel}) & Save WebP`}
+            {uploading ? "Compressing & Saving..." : `Crop & Save WebP (${preset.aspectLabel})`}
           </button>
         </div>
       </div>
     </div>
   );
 };
+
+export default ImageCropperModal;
