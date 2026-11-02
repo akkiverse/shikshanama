@@ -8,15 +8,10 @@ declare global {
   }
 }
 
-const SectionHeading: React.FC<{ en: string; hi?: string }> = ({ en, hi }) => (
+const SectionHeading: React.FC<{ en: string; hi?: string }> = ({ en }) => (
   <div style={{ marginBottom: "1.35rem" }}>
-    <h2 style={{ margin: 0, fontSize: "clamp(1.5rem, 3vw, 2.15rem)", fontWeight: 800 }}>
+    <h2 style={{ margin: 0, fontSize: "clamp(1.5rem, 3vw, 2.15rem)", fontWeight: 800, letterSpacing: "-0.02em" }}>
       {en}
-      {hi ? (
-        <span className="hi-accent" style={{ display: "block", fontSize: "1.05rem", color: "var(--accent-primary)", fontWeight: 600 }}>
-          {hi}
-        </span>
-      ) : null}
     </h2>
   </div>
 );
@@ -96,7 +91,7 @@ const ConsentPublicPage: React.FC<{ token: string }> = ({ token }) => {
     return (
       <div className="container" style={{ maxWidth: "540px", padding: "3.5rem 1rem" }}>
         <div className="bento-card">
-          <h1 style={{ marginTop: 0, fontSize: "1.35rem" }}>Shikshanama (शिक्षाNama)</h1>
+          <h1 style={{ marginTop: 0, fontSize: "1.35rem" }}>Shikshanama (<span className="hi-part">शिक्षा</span>Nama)</h1>
           <p role="alert" style={{ color: "#f87171", fontWeight: 700 }}>{error}</p>
           <a href="/" className="btn-primary">Back to Homepage</a>
         </div>
@@ -108,7 +103,7 @@ const ConsentPublicPage: React.FC<{ token: string }> = ({ token }) => {
     <div className="container" style={{ maxWidth: "600px", padding: "2.5rem 1rem" }}>
       <div className="bento-card">
         <h1 style={{ marginTop: 0, fontSize: "1.45rem" }}>
-          <span className="hi-part">शिक्षा</span>Nama · Parent Consent / अभिभावक सहमति
+          <span className="hi-part">शिक्षा</span>Nama · Parent Consent
         </h1>
         {doneMsg ? (
           <div>
@@ -138,8 +133,7 @@ const ConsentPublicPage: React.FC<{ token: string }> = ({ token }) => {
             </div>
 
             <div style={{ fontSize: "0.88rem", background: "rgba(15,23,42,0.5)", padding: "0.85rem", borderRadius: "0.65rem" }}>
-              <p style={{ marginTop: 0 }}>{info.consent_text_en}</p>
-              <p className="hi-accent" lang="hi" style={{ marginBottom: 0 }}>{info.consent_text_hi}</p>
+              <p style={{ margin: 0 }}>{info.consent_text_en}</p>
             </div>
 
             <p style={{ fontSize: "0.82rem", color: "var(--text-secondary)", margin: 0 }}>{info.withdrawal_info}</p>
@@ -147,7 +141,7 @@ const ConsentPublicPage: React.FC<{ token: string }> = ({ token }) => {
             {submitErr && <div role="alert" style={{ color: "#f87171", fontWeight: 600 }}>{submitErr}</div>}
 
             <label style={{ fontSize: "0.9rem", fontWeight: 600 }}>
-              Parent / Guardian Full Name (माता-पिता का नाम) *
+              Parent / Guardian Full Name *
               <input
                 required
                 value={parentName}
@@ -159,10 +153,10 @@ const ConsentPublicPage: React.FC<{ token: string }> = ({ token }) => {
 
             <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
               <button type="button" onClick={() => submitDecision("agree")} className="btn-primary">
-                I agree / मैं सहमत हूँ
+                I Agree
               </button>
               <button type="button" onClick={() => submitDecision("decline")} className="mobile-menu-btn" style={{ display: "inline-flex" }}>
-                I do not agree
+                I Do Not Agree
               </button>
             </div>
           </div>
@@ -283,7 +277,7 @@ export const App: React.FC = () => {
   }
 
   if (!data) {
-    return <div className="container" style={{ padding: "3rem 1rem" }}>Loading Shikshanama (शिक्षाNama)...</div>;
+    return <div className="container" style={{ padding: "3rem 1rem" }}>Loading Shikshanama (<span className="hi-part">शिक्षा</span>Nama)...</div>;
   }
 
   const { settings, hero_stats, pinned_results, results, courses, batches, founders, branches, testimonials, gallery } = data;
@@ -331,9 +325,9 @@ export const App: React.FC = () => {
     <div>
       {leadSuccess ? (
         <div className="section-animate" style={{ textAlign: "center", padding: "1rem 0" }}>
-          <h3 style={{ color: "#4ade80", marginTop: 0 }}>{leadSuccess.message}</h3>
-          <p className="hi-accent" style={{ color: "var(--text-secondary)" }}>
-            धन्यवाद! हमारी टीम जल्द ही आपसे संपर्क करेगी।
+          <h3 style={{ color: "#34d399", marginTop: 0 }}>{leadSuccess.message}</h3>
+          <p style={{ color: "var(--text-secondary)" }}>
+            Our academic counselling team will contact you shortly.
           </p>
           {leadSuccess.whatsapp_url && (
             <a href={leadSuccess.whatsapp_url} target="_blank" rel="noopener" className="btn-secondary">
@@ -342,7 +336,7 @@ export const App: React.FC = () => {
           )}
         </div>
       ) : (
-        <form onSubmit={handleLeadSubmit} method="post" action="/api/public/leads/form" style={{ display: "grid", gap: "0.8rem" }}>
+        <form onSubmit={handleLeadSubmit} method="post" action="/api/public/leads/form" style={{ display: "grid", gap: "0.85rem" }}>
           {leadError && (
             <div role="alert" style={{ padding: "0.6rem", background: "rgba(239,68,68,0.16)", color: "#f87171", borderRadius: "0.5rem", fontSize: "0.88rem" }}>
               {leadError}
@@ -429,12 +423,12 @@ export const App: React.FC = () => {
             autoComplete="off"
           />
 
-          <p className="hi-accent" style={{ fontSize: "0.8rem", color: "var(--text-secondary)", margin: 0 }}>
-            We use your number only to contact you about classes. / आपका नंबर सिर्फ़ क्लास की जानकारी के लिए।
+          <p style={{ fontSize: "0.8rem", color: "var(--text-muted)", margin: 0 }}>
+            We use your mobile number only to contact you regarding batch timings and class admissions.
           </p>
 
           <button type="submit" className="btn-primary" style={{ justifySelf: "start" }}>
-            Book Free Demo · फ्री डेमो बुक करें
+            Book Free Demo Class
           </button>
         </form>
       )}
@@ -448,8 +442,8 @@ export const App: React.FC = () => {
         <div
           data-testid="demo-content-ribbon"
           style={{
-            background: "rgba(245, 158, 11, 0.18)",
-            borderBottom: "1px solid rgba(245, 158, 11, 0.4)",
+            background: "rgba(245, 158, 11, 0.14)",
+            borderBottom: "1px solid rgba(245, 158, 11, 0.3)",
             color: "#fbbf24",
             fontSize: "0.78rem",
             textAlign: "center",
@@ -457,11 +451,11 @@ export const App: React.FC = () => {
             fontWeight: 600,
           }}
         >
-          Demo content · Sample student profiles & avatars shown for preview.
+          Preview Mode · Sample student profiles shown for illustration.
         </div>
       )}
 
-      {/* Top Announcement Ticker (US-1: AC-1.1, AC-1.2, AC-1.3) */}
+      {/* Top Announcement Ticker */}
       {settings.ticker_enabled && settings.ticker_text ? (
         <div className="ticker-bar" data-testid="announcement-ticker">
           {settings.ticker_link ? (
@@ -478,7 +472,7 @@ export const App: React.FC = () => {
         </div>
       ) : null}
 
-      {/* Sticky Glassmorphic Navbar (AC-1.4, AC-1.6, AC-23.5) */}
+      {/* Sticky Glassmorphic Navbar */}
       <nav className={`sticky-nav ${scrolled ? "scrolled" : ""}`}>
         <div className="nav-inner">
           <a href="/" className="brand-logo">
@@ -501,7 +495,7 @@ export const App: React.FC = () => {
               {theme === "dark" ? "☀️ Light" : "🌙 Dark"}
             </button>
             <button type="button" onClick={() => setDemoModalOpen(true)} className="btn-primary">
-              Book Free Demo · फ्री डेमो बुक करें
+              Book Free Demo
             </button>
           </div>
 
@@ -516,7 +510,7 @@ export const App: React.FC = () => {
         </div>
       </nav>
 
-      {/* Mobile Full-Screen Sheet (AC-1.6) */}
+      {/* Mobile Full-Screen Sheet */}
       {mobileMenuOpen && (
         <div className="mobile-sheet" role="dialog" aria-modal="true" aria-label="Mobile Navigation">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -528,7 +522,7 @@ export const App: React.FC = () => {
             </button>
           </div>
           <a href="#hall-of-fame" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: "1.2rem", color: "var(--text-primary)", textDecoration: "none", fontWeight: 700 }}>
-            Results · नतीजे
+            Results & Toppers
           </a>
           <a href="#courses" onClick={() => setMobileMenuOpen(false)} style={{ fontSize: "1.2rem", color: "var(--text-primary)", textDecoration: "none", fontWeight: 700 }}>
             Courses & Batches
@@ -550,44 +544,43 @@ export const App: React.FC = () => {
               setDemoModalOpen(true);
             }}
           >
-            Book Free Demo · फ्री डेमो बुक करें
+            Book Free Demo
           </button>
         </div>
       )}
 
-      {/* Hero Section (US-2) */}
-      <section className="container section-animate" style={{ paddingTop: "2.5rem", paddingBottom: "2.5rem" }}>
-        <div className="bento-card" style={{ padding: "clamp(1.5rem, 4vw, 2.75rem)" }}>
+      {/* Hero Section */}
+      <section className="container section-animate" style={{ paddingTop: "2.75rem", paddingBottom: "2.75rem" }}>
+        <div className="bento-card" style={{ padding: "clamp(1.5rem, 4vw, 3rem)" }}>
           <span
-            className="hi-accent"
             style={{
               display: "inline-block",
-              padding: "0.3rem 0.85rem",
+              padding: "0.35rem 0.95rem",
               borderRadius: "9999px",
-              background: "rgba(249,115,22,0.16)",
-              color: "var(--accent-primary)",
+              background: "var(--badge-bg)",
+              color: "var(--badge-text)",
               fontWeight: 700,
               fontSize: "0.85rem",
-              marginBottom: "0.9rem",
+              marginBottom: "1rem",
+              border: "1px solid var(--border-color)",
             }}
           >
-            West Patel Nagar's Most Trusted Coaching · क्लास 6 से 12 तक पक्की तैयारी
+            West Patel Nagar's Premier Coaching · Classes 6 to 12
           </span>
-          <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.35rem)", fontWeight: 900, margin: "0 0 0.85rem", lineHeight: 1.25 }}>
-            Build Board & Competitive Confidence with{" "}
-            <span className="hi-part" style={{ color: "var(--accent-primary)" }}>
+          <h1 style={{ fontSize: "clamp(2rem, 5vw, 3.4rem)", fontWeight: 900, margin: "0 0 1rem", lineHeight: 1.2, letterSpacing: "-0.03em" }}>
+            Build Board & Competitive Excellence with{" "}
+            <span className="hi-part">
               शिक्षाNama
-            </span>{" "}
-            (Shikshanama)
+            </span>
           </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "1.05rem", maxWidth: "740px", marginBottom: "1.5rem" }}>
-            Small-batch personal mentorship in Foundation (Class 6–10), Science, Commerce, and Humanities (Class 11–12).
-            Daily doubt counters, weekly board mock tests, and proven results across West Patel Nagar.
+          <p style={{ color: "var(--text-secondary)", fontSize: "1.08rem", maxWidth: "740px", marginBottom: "1.75rem", lineHeight: 1.65 }}>
+            Personal small-batch mentorship in Foundation (Classes 6–10), Science, Commerce, and Humanities (Classes 11–12).
+            Structured daily doubt sessions, weekly CBSE board mock drills, and top percentile results.
           </p>
 
-          <div style={{ display: "flex", gap: "0.85rem", flexWrap: "wrap", marginBottom: "2rem" }}>
+          <div style={{ display: "flex", gap: "0.85rem", flexWrap: "wrap", marginBottom: "2.25rem" }}>
             <button type="button" onClick={() => setDemoModalOpen(true)} className="btn-primary">
-              Book a Free Demo Class · फ्री डेमो बुक करें
+              Book a Free Demo Class
             </button>
             {settings.global_whatsapp_url && (
               <a href={settings.global_whatsapp_url} target="_blank" rel="noopener" className="btn-secondary">
@@ -597,7 +590,7 @@ export const App: React.FC = () => {
           </div>
 
           {settings.hero_image_url && (
-            <div style={{ marginBottom: "1.75rem", borderRadius: "0.85rem", overflow: "hidden" }}>
+            <div style={{ marginBottom: "1.75rem", borderRadius: "1rem", overflow: "hidden", border: "1px solid var(--border-color)" }}>
               <img
                 src={settings.hero_image_url}
                 alt="Shikshanama Campus Banner"
@@ -608,23 +601,25 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* Dynamic Trust Counters (AC-2.2) */}
+          {/* Dynamic Trust Counters */}
           {hero_stats && hero_stats.length > 0 && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "1rem" }}>
               {hero_stats.map((st: any) => (
                 <div
                   key={st.id}
                   style={{
-                    padding: "0.95rem",
-                    borderRadius: "0.85rem",
-                    background: "rgba(15, 23, 42, 0.45)",
+                    padding: "1.1rem",
+                    borderRadius: "1rem",
+                    background: "rgba(255, 255, 255, 0.03)",
                     border: "1px solid var(--border-color)",
                   }}
                 >
-                  <div style={{ fontSize: "1.75rem", fontWeight: 900, color: "var(--accent-primary)" }}>
+                  <div style={{ fontSize: "1.85rem", fontWeight: 900, color: "var(--accent-secondary)", letterSpacing: "-0.02em" }}>
                     <CountUpValue valueText={st.value} />
                   </div>
-                  <div style={{ fontSize: "0.85rem", color: "var(--text-secondary)", fontWeight: 600 }}>{st.label}</div>
+                  <div style={{ fontSize: "0.84rem", color: "var(--text-secondary)", fontWeight: 600, marginTop: "0.2rem" }}>
+                    {st.label}
+                  </div>
                 </div>
               ))}
             </div>
@@ -632,13 +627,10 @@ export const App: React.FC = () => {
         </div>
       </section>
 
-      {/* Hall of Fame / Results Showcase (US-3) */}
+      {/* Hall of Fame / Results Showcase */}
       <section id="hall-of-fame" className="container section-animate" style={{ paddingBottom: "2.75rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: "1rem" }}>
-          <SectionHeading
-            en={headings.results?.en || "Hall of Fame"}
-            hi={headings.results?.hi}
-          />
+          <SectionHeading en={headings.results?.en || "Hall of Fame"} />
           {pathname !== "/results" && (
             <a href="/results" style={{ color: "var(--accent-secondary)", fontWeight: 700, textDecoration: "none", marginBottom: "1.35rem" }}>
               View Full Hall of Fame ({results.length}) →
@@ -646,14 +638,14 @@ export const App: React.FC = () => {
           )}
         </div>
 
-        {/* Filter Bar (AC-3.2, AC-3.3) */}
+        {/* Filter Bar */}
         <div className="bento-card" style={{ marginBottom: "1.25rem", display: "flex", gap: "0.75rem", flexWrap: "wrap", alignItems: "center" }}>
           <strong style={{ fontSize: "0.88rem" }}>Filter Achievers:</strong>
           <select
             aria-label="Filter by Class"
             value={classFilter}
             onChange={(e) => updateFilterUrl(e.target.value, streamFilter, yearFilter)}
-            style={{ padding: "0.45rem 0.75rem", borderRadius: "0.5rem" }}
+            style={{ padding: "0.5rem 0.85rem", borderRadius: "0.6rem" }}
           >
             <option value="All">All Classes</option>
             <option value="10">Class 10</option>
@@ -665,7 +657,7 @@ export const App: React.FC = () => {
             aria-label="Filter by Stream"
             value={streamFilter}
             onChange={(e) => updateFilterUrl(classFilter, e.target.value, yearFilter)}
-            style={{ padding: "0.45rem 0.75rem", borderRadius: "0.5rem" }}
+            style={{ padding: "0.5rem 0.85rem", borderRadius: "0.6rem" }}
           >
             <option value="All">All Streams</option>
             <option value="Science">Science</option>
@@ -678,7 +670,7 @@ export const App: React.FC = () => {
             aria-label="Filter by Academic Year"
             value={yearFilter}
             onChange={(e) => updateFilterUrl(classFilter, streamFilter, e.target.value)}
-            style={{ padding: "0.45rem 0.75rem", borderRadius: "0.5rem" }}
+            style={{ padding: "0.5rem 0.85rem", borderRadius: "0.6rem" }}
           >
             <option value="All">All Years</option>
             {(data.available_years || ["2025-26", "2024-25"]).map((yr: string) => (
@@ -701,20 +693,20 @@ export const App: React.FC = () => {
         </div>
 
         {filteredResults.length === 0 ? (
-          <div className="bento-card" data-testid="no-results-msg" style={{ textAlign: "center", padding: "2rem" }}>
-            <p style={{ fontSize: "1.05rem", marginTop: 0 }}>No results yet for this filter.</p>
+          <div className="bento-card" data-testid="no-results-msg" style={{ textAlign: "center", padding: "2.5rem" }}>
+            <p style={{ fontSize: "1.05rem", marginTop: 0, color: "var(--text-secondary)" }}>No student results yet for this filter.</p>
             <button type="button" onClick={() => setDemoModalOpen(true)} className="btn-primary">
-              Book Free Demo · फ्री डेमो बुक करें
+              Book Free Demo Class
             </button>
           </div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(265px, 1fr))", gap: "1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(265px, 1fr))", gap: "1.1rem" }}>
             {(pathname === "/" && classFilter === "All" && streamFilter === "All" && yearFilter === "All"
               ? pinned_results
               : filteredResults
             ).map((r: any) => (
               <article key={r.id} className="bento-card" data-testid="result-card">
-                <div style={{ display: "flex", gap: "0.9rem", alignItems: "center" }}>
+                <div style={{ display: "flex", gap: "0.95rem", alignItems: "center" }}>
                   <div className="result-photo-wrap">
                     <img src={r.photo_url} alt={r.name} width={400} height={400} loading="lazy" />
                   </div>
@@ -726,15 +718,16 @@ export const App: React.FC = () => {
                         color: "#fff",
                         fontWeight: 800,
                         fontSize: "0.82rem",
-                        padding: "0.18rem 0.55rem",
+                        padding: "0.2rem 0.65rem",
                         borderRadius: "9999px",
-                        marginBottom: "0.25rem",
+                        marginBottom: "0.3rem",
+                        boxShadow: "0 2px 10px var(--accent-glow)",
                       }}
                     >
                       {r.score_text}
                     </span>
-                    <h3 style={{ margin: 0, fontSize: "1.08rem" }}>{r.name}</h3>
-                    <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)" }}>
+                    <h3 style={{ margin: 0, fontSize: "1.1rem" }}>{r.name}</h3>
+                    <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", marginTop: "0.15rem" }}>
                       Class {r.class_name} · {r.stream} · {r.year}
                     </div>
                   </div>
@@ -746,12 +739,9 @@ export const App: React.FC = () => {
         )}
       </section>
 
-      {/* Courses & Live Upcoming Batches (US-4) */}
+      {/* Courses & Live Upcoming Batches */}
       <section id="courses" className="container section-animate" style={{ paddingBottom: "2.75rem" }}>
-        <SectionHeading
-          en={headings.courses?.en || "Courses & Streams"}
-          hi={headings.courses?.hi}
-        />
+        <SectionHeading en={headings.courses?.en || "Courses & Streams"} />
 
         <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap", marginBottom: "1.25rem" }}>
           {["Foundation", "Science", "Commerce", "Humanities"].map((st) => (
@@ -767,33 +757,34 @@ export const App: React.FC = () => {
           ))}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem", marginBottom: "2rem" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1.1rem", marginBottom: "2rem" }}>
           {(courses || [])
             .filter((c: any) => c.stream.toLowerCase() === activeCourseStream.toLowerCase())
             .map((c: any) => (
               <div key={c.id} className="bento-card">
-                <div style={{ color: "var(--accent-primary)", fontWeight: 700, fontSize: "0.82rem" }}>
+                <div style={{ color: "var(--accent-secondary)", fontWeight: 700, fontSize: "0.82rem", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   {c.stream} · Classes {c.classes}
                 </div>
-                <h3 style={{ margin: "0.3rem 0 0.75rem" }}>{c.name}</h3>
-                <div style={{ marginBottom: "0.75rem", display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
+                <h3 style={{ margin: "0.35rem 0 0.85rem", fontSize: "1.2rem" }}>{c.name}</h3>
+                <div style={{ marginBottom: "0.85rem", display: "flex", gap: "0.45rem", flexWrap: "wrap" }}>
                   {(c.subjects || []).map((sub: string) => (
                     <span
                       key={sub}
                       style={{
                         fontSize: "0.78rem",
-                        padding: "0.2rem 0.55rem",
-                        borderRadius: "0.4rem",
-                        background: "rgba(56,189,248,0.14)",
+                        padding: "0.22rem 0.6rem",
+                        borderRadius: "0.45rem",
+                        background: "rgba(6, 182, 212, 0.12)",
                         color: "var(--accent-secondary)",
                         fontWeight: 600,
+                        border: "1px solid rgba(6, 182, 212, 0.2)",
                       }}
                     >
                       {sub}
                     </span>
                   ))}
                 </div>
-                <ul style={{ margin: 0, paddingLeft: "1.1rem", fontSize: "0.88rem", color: "var(--text-secondary)" }}>
+                <ul style={{ margin: 0, paddingLeft: "1.15rem", fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.6 }}>
                   {(c.highlights || []).map((hl: string) => (
                     <li key={hl}>{hl}</li>
                   ))}
@@ -802,16 +793,13 @@ export const App: React.FC = () => {
             ))}
         </div>
 
-        {/* Upcoming Batches Schedule (AC-4.2, AC-4.4, AC-4.5) */}
-        <SectionHeading
-          en={headings.batches?.en || "Live Upcoming Batches"}
-          hi={headings.batches?.hi}
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "1rem" }}>
+        {/* Upcoming Batches Schedule */}
+        <SectionHeading en={headings.batches?.en || "Live Upcoming Batches"} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(290px, 1fr))", gap: "1.1rem" }}>
           {(batches || []).map((b: any) => (
             <div key={b.id} className="bento-card" data-testid="batch-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
-                <span style={{ fontWeight: 800, fontSize: "1.05rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.6rem" }}>
+                <span style={{ fontWeight: 800, fontSize: "1.1rem" }}>
                   Class {b.class_name} · {b.stream}
                 </span>
                 <span
@@ -819,21 +807,21 @@ export const App: React.FC = () => {
                   style={{
                     fontSize: "0.76rem",
                     fontWeight: 700,
-                    padding: "0.2rem 0.6rem",
+                    padding: "0.22rem 0.65rem",
                     borderRadius: "9999px",
                     background:
                       b.status === "Open"
-                        ? "rgba(34,197,94,0.18)"
+                        ? "rgba(16, 185, 129, 0.15)"
                         : b.status === "Full"
-                        ? "rgba(239,68,68,0.18)"
+                        ? "rgba(244, 63, 94, 0.15)"
                         : undefined,
-                    color: b.status === "Open" ? "#4ade80" : b.status === "Full" ? "#f87171" : undefined,
+                    color: b.status === "Open" ? "#34d399" : b.status === "Full" ? "#f43f5e" : undefined,
                   }}
                 >
                   {b.status}
                 </span>
               </div>
-              <div style={{ fontSize: "0.86rem", color: "var(--text-secondary)", marginBottom: "0.85rem" }}>
+              <div style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginBottom: "1rem", lineHeight: 1.6 }}>
                 <div>📍 {b.branch_name}</div>
                 <div>🗓 Starts: <strong>{b.start_date_formatted}</strong></div>
                 <div>⏰ {b.timings}</div>
@@ -858,12 +846,9 @@ export const App: React.FC = () => {
         </div>
       </section>
 
-      {/* Founders & Leadership Section (US-5) */}
+      {/* Founders & Mentors Section */}
       <section id="founders" className="container section-animate" style={{ paddingBottom: "2.75rem" }}>
-        <SectionHeading
-          en={headings.founders?.en || "Founders & Mentors"}
-          hi={headings.founders?.hi}
-        />
+        <SectionHeading en={headings.founders?.en || "Founders & Mentors"} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(310px, 1fr))", gap: "1.25rem" }}>
           {(founders || []).map((f: any) => {
             const isLong = (f.vision || "").length > 280;
@@ -871,21 +856,21 @@ export const App: React.FC = () => {
             const textToShow = isLong && !expanded ? f.vision.slice(0, 280) + "…" : f.vision;
             return (
               <div key={f.id} className="bento-card founder-card" data-testid="founder-card">
-                <div style={{ display: "flex", gap: "1rem", alignItems: "flex-start" }}>
+                <div style={{ display: "flex", gap: "1.1rem", alignItems: "flex-start" }}>
                   <img
                     src={f.photo_url}
                     alt={f.name}
                     width={96}
                     height={120}
                     loading="lazy"
-                    style={{ width: "96px", height: "120px", objectFit: "cover", borderRadius: "0.75rem", flexShrink: 0 }}
+                    style={{ width: "96px", height: "120px", objectFit: "cover", borderRadius: "0.85rem", flexShrink: 0, border: "1px solid var(--border-color)" }}
                   />
                   <div>
-                    <h3 style={{ margin: "0 0 0.2rem" }}>{f.name}</h3>
-                    <div style={{ color: "var(--accent-primary)", fontSize: "0.84rem", fontWeight: 700, marginBottom: "0.5rem" }}>
+                    <h3 style={{ margin: "0 0 0.25rem", fontSize: "1.15rem" }}>{f.name}</h3>
+                    <div style={{ color: "var(--accent-secondary)", fontSize: "0.84rem", fontWeight: 700, marginBottom: "0.6rem" }}>
                       {f.designation}
                     </div>
-                    <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-secondary)" }}>
+                    <p style={{ margin: 0, fontSize: "0.88rem", color: "var(--text-secondary)", lineHeight: 1.55 }}>
                       “{textToShow}”
                     </p>
                     {isLong && (
@@ -897,7 +882,7 @@ export const App: React.FC = () => {
                           border: "none",
                           color: "var(--accent-secondary)",
                           fontWeight: 700,
-                          padding: "0.3rem 0 0",
+                          padding: "0.35rem 0 0",
                           cursor: "pointer",
                         }}
                       >
@@ -912,36 +897,34 @@ export const App: React.FC = () => {
         </div>
       </section>
 
-      {/* Multi-Branch Locator (US-6) */}
+      {/* Multi-Branch Locator */}
       <section id="branches" className="container section-animate" style={{ paddingBottom: "2.75rem" }}>
-        <SectionHeading
-          en={headings.branches?.en || "Our Branches"}
-          hi={headings.branches?.hi}
-        />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1rem" }}>
+        <SectionHeading en={headings.branches?.en || "Our Branches"} />
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "1.1rem" }}>
           {(branches || []).map((b: any) => (
             <div key={b.id} className="bento-card" data-testid="branch-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.45rem" }}>
-                <h3 style={{ margin: 0, fontSize: "1.1rem" }}>{b.name}</h3>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.55rem" }}>
+                <h3 style={{ margin: 0, fontSize: "1.15rem" }}>{b.name}</h3>
                 {b.is_flagship && (
                   <span
                     style={{
                       fontSize: "0.75rem",
                       fontWeight: 800,
-                      padding: "0.2rem 0.55rem",
+                      padding: "0.22rem 0.65rem",
                       borderRadius: "9999px",
-                      background: "rgba(249,115,22,0.2)",
-                      color: "var(--accent-primary)",
+                      background: "var(--badge-bg)",
+                      color: "var(--badge-text)",
+                      border: "1px solid var(--border-color)",
                     }}
                   >
                     Flagship
                   </span>
                 )}
               </div>
-              <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginBottom: "0.85rem" }}>{b.address}</p>
+              <p style={{ fontSize: "0.88rem", color: "var(--text-secondary)", marginBottom: "1rem", lineHeight: 1.55 }}>{b.address}</p>
               <div style={{ display: "flex", gap: "0.5rem", flexWrap: "wrap" }}>
                 <a href={b.maps_url} target="_blank" rel="noopener" className="mobile-menu-btn" style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.82rem" }}>
-                  📍 Get Directions
+                  📍 Directions
                 </a>
                 {b.tel_url && (
                   <a href={b.tel_url} className="mobile-menu-btn" style={{ display: "inline-flex", textDecoration: "none", fontSize: "0.82rem" }}>
@@ -949,7 +932,7 @@ export const App: React.FC = () => {
                   </a>
                 )}
                 {b.whatsapp_url && (
-                  <a href={b.whatsapp_url} target="_blank" rel="noopener" className="btn-secondary" style={{ padding: "0.45rem 0.8rem", fontSize: "0.82rem" }}>
+                  <a href={b.whatsapp_url} target="_blank" rel="noopener" className="btn-secondary" style={{ padding: "0.45rem 0.85rem", fontSize: "0.82rem" }}>
                     💬 WhatsApp
                   </a>
                 )}
@@ -959,13 +942,10 @@ export const App: React.FC = () => {
         </div>
       </section>
 
-      {/* Campus Life, Testimonials & Instagram Hub (US-7) */}
+      {/* Campus Life, Testimonials & Instagram Hub */}
       <section id="campus" className="container section-animate" style={{ paddingBottom: "2.75rem" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem", marginBottom: "1rem" }}>
-          <SectionHeading
-            en={headings.campus?.en || "Campus Life & Voices"}
-            hi={headings.campus?.hi}
-          />
+          <SectionHeading en={headings.campus?.en || "Campus Life & Voices"} />
           <a
             href={settings.instagram_url}
             target="_blank"
@@ -973,23 +953,23 @@ export const App: React.FC = () => {
             className="btn-primary"
             style={{ marginBottom: "1.35rem" }}
           >
-            📸 Follow @{settings.instagram_handle} on Instagram
+            📸 Follow @{settings.instagram_handle}
           </a>
         </div>
 
-        {/* Testimonials Auto-Sliding Marquee (AC-7.1) */}
+        {/* Testimonials Auto-Sliding Marquee */}
         {testimonials && testimonials.length > 0 && (
           <div className="marquee-container" style={{ marginBottom: "1.75rem" }}>
             <div className="marquee-track">
               {[...testimonials, ...testimonials].map((t: any, idx: number) => (
                 <div key={`${t.id}-${idx}`} className="bento-card" style={{ width: "320px", flexShrink: 0 }}>
-                  <p style={{ fontSize: "0.88rem", marginTop: 0 }}>“{t.quote}”</p>
+                  <p style={{ fontSize: "0.88rem", marginTop: 0, lineHeight: 1.55 }}>“{t.quote}”</p>
                   <div style={{ display: "flex", gap: "0.65rem", alignItems: "center" }}>
                     {t.photo_url && (
-                      <img src={t.photo_url} alt={t.name} width={40} height={40} loading="lazy" style={{ borderRadius: "50%" }} />
+                      <img src={t.photo_url} alt={t.name} width={40} height={40} loading="lazy" style={{ borderRadius: "50%", border: "1px solid var(--border-color)" }} />
                     )}
                     <div>
-                      <strong style={{ fontSize: "0.86rem" }}>{t.name}</strong>
+                      <strong style={{ fontSize: "0.88rem" }}>{t.name}</strong>
                       <div style={{ fontSize: "0.76rem", color: "var(--text-secondary)" }}>
                         {t.role} {t.class_year ? `· ${t.class_year}` : ""}
                       </div>
@@ -1001,14 +981,14 @@ export const App: React.FC = () => {
           </div>
         )}
 
-        {/* 16:9 Classroom Gallery with Lightbox on Tap (AC-7.2) */}
+        {/* 16:9 Classroom Gallery with Lightbox on Tap */}
         {gallery && gallery.length > 0 && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: "1rem" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: "1.1rem" }}>
             {gallery.map((g: any, idx: number) => (
               <div
                 key={g.id}
                 className="bento-card"
-                style={{ padding: "0.6rem", cursor: "pointer" }}
+                style={{ padding: "0.65rem", cursor: "pointer" }}
                 onClick={() => setLightboxIdx(idx)}
               >
                 <img
@@ -1017,10 +997,10 @@ export const App: React.FC = () => {
                   width={640}
                   height={360}
                   loading="lazy"
-                  style={{ width: "100%", height: "auto", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: "0.75rem" }}
+                  style={{ width: "100%", height: "auto", aspectRatio: "16 / 9", objectFit: "cover", borderRadius: "0.85rem" }}
                 />
                 {g.caption && (
-                  <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", padding: "0.45rem 0.25rem 0.1rem" }}>
+                  <div style={{ fontSize: "0.82rem", color: "var(--text-secondary)", padding: "0.5rem 0.35rem 0.15rem" }}>
                     {g.caption}
                   </div>
                 )}
@@ -1030,7 +1010,7 @@ export const App: React.FC = () => {
         )}
       </section>
 
-      {/* Lightbox Modal (AC-7.2) */}
+      {/* Lightbox Modal */}
       {lightboxIdx !== null && gallery?.[lightboxIdx] && (
         <div
           role="dialog"
@@ -1040,7 +1020,8 @@ export const App: React.FC = () => {
             position: "fixed",
             inset: 0,
             zIndex: 95,
-            background: "rgba(9, 13, 22, 0.9)",
+            background: "rgba(7, 9, 14, 0.92)",
+            backdropFilter: "blur(16px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1053,10 +1034,10 @@ export const App: React.FC = () => {
               alt={gallery[lightboxIdx].caption}
               width={1280}
               height={720}
-              style={{ width: "100%", height: "auto", borderRadius: "0.75rem" }}
+              style={{ width: "100%", height: "auto", borderRadius: "0.85rem" }}
             />
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.75rem" }}>
-              <span>{gallery[lightboxIdx].caption}</span>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.85rem" }}>
+              <span style={{ fontWeight: 600 }}>{gallery[lightboxIdx].caption}</span>
               <button type="button" onClick={() => setLightboxIdx(null)} className="mobile-menu-btn" style={{ display: "inline-flex" }}>
                 Close ✕
               </button>
@@ -1065,18 +1046,15 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Inline Book a Free Demo Section (US-9) */}
+      {/* Inline Book a Free Demo Section */}
       <section id="demo-form" className="container section-animate" style={{ paddingBottom: "2rem" }}>
-        <div className="bento-card" style={{ padding: "clamp(1.25rem, 3vw, 2.25rem)" }}>
-          <SectionHeading
-            en={headings.demo?.en || "Book a Free Demo Class"}
-            hi={headings.demo?.hi}
-          />
+        <div className="bento-card" style={{ padding: "clamp(1.5rem, 3.5vw, 2.5rem)" }}>
+          <SectionHeading en={headings.demo?.en || "Book a Free Demo Class"} />
           {renderLeadForm()}
         </div>
       </section>
 
-      {/* Slide-up / Modal Demo Form (AC-9.1) */}
+      {/* Slide-up / Modal Demo Form */}
       {demoModalOpen && (
         <div
           role="dialog"
@@ -1086,7 +1064,8 @@ export const App: React.FC = () => {
             position: "fixed",
             inset: 0,
             zIndex: 85,
-            background: "rgba(9, 13, 22, 0.82)",
+            background: "rgba(7, 9, 14, 0.85)",
+            backdropFilter: "blur(12px)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -1094,8 +1073,8 @@ export const App: React.FC = () => {
           }}
         >
           <div className="bento-card" style={{ maxWidth: "560px", width: "100%" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.75rem" }}>
-              <h3 style={{ margin: 0 }}>Book Free Demo · फ्री डेमो बुक करें</h3>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.85rem" }}>
+              <h3 style={{ margin: 0, fontSize: "1.25rem" }}>Book Free Demo Class</h3>
               <button type="button" onClick={() => setDemoModalOpen(false)} className="mobile-menu-btn" style={{ display: "inline-flex" }}>
                 ✕
               </button>
@@ -1105,7 +1084,7 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Floating WhatsApp and Call Buttons (US-8: AC-8.1, AC-8.2, AC-8.3) */}
+      {/* Floating WhatsApp and Call Buttons */}
       <div className="floating-contact-dock" data-testid="floating-contact-dock">
         {settings.global_whatsapp && settings.global_whatsapp_url && (
           <a
@@ -1113,7 +1092,7 @@ export const App: React.FC = () => {
             target="_blank"
             rel="noopener"
             className="fab-btn"
-            style={{ background: "#16a34a" }}
+            style={{ background: "#10b981" }}
             aria-label="Chat with us on WhatsApp"
           >
             <span>💬</span>
@@ -1124,7 +1103,7 @@ export const App: React.FC = () => {
           <a
             href={`tel:${settings.global_phone}`}
             className="fab-btn"
-            style={{ background: "#0284c7" }}
+            style={{ background: "#4f46e5" }}
             aria-label="Call Shikshanama now"
           >
             <span>📞</span>
@@ -1133,15 +1112,15 @@ export const App: React.FC = () => {
         )}
       </div>
 
-      <footer className="container" style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1.5rem", fontSize: "0.84rem", color: "var(--text-secondary)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
+      <footer className="container" style={{ borderTop: "1px solid var(--border-color)", paddingTop: "1.75rem", fontSize: "0.86rem", color: "var(--text-secondary)", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem" }}>
         <div>
           <strong>{settings.brand_name}</strong> · West Patel Nagar, New Delhi - 110008
         </div>
-        <div style={{ display: "flex", gap: "1rem" }}>
-          <a href={settings.instagram_url} target="_blank" rel="noopener" style={{ color: "var(--text-secondary)" }}>
+        <div style={{ display: "flex", gap: "1.25rem" }}>
+          <a href={settings.instagram_url} target="_blank" rel="noopener" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>
             @{settings.instagram_handle}
           </a>
-          <a href="/admin" style={{ color: "var(--text-secondary)" }}>
+          <a href="/admin" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>
             Staff Admin
           </a>
         </div>

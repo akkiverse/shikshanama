@@ -11,3 +11,5 @@ dist/
 *.sqlite3
 .vercel/
 .DS_Store
+.vercel
+.env*

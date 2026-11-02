@@ -122,6 +122,17 @@ def _load_settings_dict(db: Any) -> dict[str, Any]:
 
     ig_handle = (raw.get("instagram_handle", "shikshanamaofficial") or "shikshanamaofficial").lstrip("@")
 
+    env_demo = os.environ.get("DEMO_MODE", "").strip().lower()
+    admin_override = raw.get("demo_mode_admin_override", "").strip().lower()
+    if admin_override in ("true", "false"):
+        is_demo_mode = admin_override == "true"
+    elif env_demo in ("false", "0", "no"):
+        is_demo_mode = False
+    elif env_demo in ("true", "1", "yes"):
+        is_demo_mode = raw.get("demo_mode", "true").lower() == "true"
+    else:
+        is_demo_mode = raw.get("demo_mode", "false").lower() == "true"
+
     return {
         "brand_name": raw.get("brand_name", "Shikshanama (शिक्षाNama)"),
         "instagram_handle": ig_handle,
@@ -136,7 +147,7 @@ def _load_settings_dict(db: Any) -> dict[str, Any]:
         "ticker_text": raw.get("ticker_text", ""),
         "ticker_link": raw.get("ticker_link", ""),
         "hero_image_url": raw.get("hero_image_url", ""),
-        "demo_mode": raw.get("demo_mode", "false").lower() == "true",
+        "demo_mode": is_demo_mode,
         "classes_list": classes_list,
         "streams_list": streams_list,
         "section_headings": merged_headings,
@@ -151,6 +162,7 @@ def _fetch_public_results(
     pinned_only: bool = False,
 ) -> list[dict[str, Any]]:
     """Fetch only published results whose consent status is 'Given' or 'Given (sample)' (AC-3.7)."""
+    demo_mode = _load_settings_dict(db)["demo_mode"]
     rows = db.fetchall(
         """
         SELECT r.id, r.photo_url, r.name, r.class_name, r.stream,
@@ -164,6 +176,8 @@ def _fetch_public_results(
     )
     filtered: list[dict[str, Any]] = []
     for r in rows:
+        if not demo_mode and int(r["is_sample"]):
+            continue
         if class_filter and class_filter.lower() != "all" and str(r["class_name"]).lower() != class_filter.lower():
             continue
         if stream_filter and stream_filter.lower() != "all" and str(r["stream"]).lower() != stream_filter.lower():
@@ -197,11 +211,14 @@ def _fetch_public_results(
 
 
 def _fetch_public_branches(db: Any) -> list[dict[str, Any]]:
+    demo_mode = _load_settings_dict(db)["demo_mode"]
     rows = db.fetchall(
         "SELECT * FROM branches WHERE active = 1 ORDER BY is_flagship DESC, sort_order ASC, id ASC"
     )
     out: list[dict[str, Any]] = []
     for b in rows:
+        if not demo_mode and int(b["is_sample"]) and not int(b["is_flagship"]):
+            continue
         maps_url = (b["maps_url"] or "").strip()
         if not maps_url:
             maps_url = "https://www.google.com/maps/search/?api=1&query=" + urllib.parse.quote_plus(b["address"])
@@ -228,6 +245,7 @@ def _fetch_public_branches(db: Any) -> list[dict[str, Any]]:
 
 
 def _fetch_public_batches(db: Any, settings: dict[str, Any]) -> list[dict[str, Any]]:
+    demo_mode = settings.get("demo_mode", False)
     rows = db.fetchall(
         """
         SELECT b.*, br.name AS branch_name, br.whatsapp AS branch_whatsapp, br.phone AS branch_phone
@@ -239,6 +257,8 @@ def _fetch_public_batches(db: Any, settings: dict[str, Any]) -> list[dict[str, A
     )
     out: list[dict[str, Any]] = []
     for b in rows:
+        if not demo_mode and int(b["is_sample"]):
+            continue
         if not _is_batch_within_window(b["start_date"]):
             continue
         formatted_date = _format_batch_date(b["start_date"])
@@ -311,6 +331,7 @@ def _fetch_public_payload(
             "is_sample": bool(f["is_sample"]),
         }
         for f in db.fetchall("SELECT * FROM founders WHERE visible = 1 ORDER BY sort_order ASC, id ASC")
+        if settings["demo_mode"] or not int(f["is_sample"])
     ]
     testimonials = [
         {
@@ -324,6 +345,7 @@ def _fetch_public_payload(
             "is_sample": bool(t["is_sample"]),
         }
         for t in db.fetchall("SELECT * FROM testimonials WHERE visible = 1 ORDER BY sort_order ASC, id ASC")
+        if settings["demo_mode"] or not int(t["is_sample"])
     ]
     gallery = [
         {
@@ -334,6 +356,7 @@ def _fetch_public_payload(
             "is_sample": bool(g["is_sample"]),
         }
         for g in db.fetchall("SELECT * FROM gallery_images WHERE visible = 1 ORDER BY sort_order ASC, id ASC")
+        if settings["demo_mode"] or not int(g["is_sample"])
     ]
 
     return {
@@ -929,6 +952,7 @@ def api_admin_dashboard(admin: dict[str, Any] = Depends(require_admin)) -> dict[
 def api_admin_remove_sample(admin: dict[str, Any] = Depends(require_admin)) -> dict[str, Any]:
     with get_db() as db:
         summary = remove_all_sample_content(db)
+        _upsert_setting(db, "demo_mode_admin_override", "false")
         return {"ok": True, "removed": summary}
 
 
@@ -1105,7 +1129,8 @@ async def api_admin_update_result(
             UPDATE results
             SET photo_url = ?, name = ?, class_name = ?, stream = ?,
                 score_text = ?, rank_text = ?, year = ?,
-                published = ?, pinned = ?, parent_name = ?, parent_whatsapp = ?
+                published = ?, pinned = ?, parent_name = ?, parent_whatsapp = ?,
+                is_sample = 0
             WHERE id = ?
             """,
             (
@@ -1370,7 +1395,7 @@ async def api_admin_update_founder(
         db.execute(
             """
             UPDATE founders
-            SET photo_url = ?, name = ?, designation = ?, vision = ?, visible = ?
+            SET photo_url = ?, name = ?, designation = ?, vision = ?, visible = ?, is_sample = 0
             WHERE id = ?
             """,
             (photo_url, name, designation, vision, 1 if body.get("visible", existing["visible"]) else 0, founder_id),
@@ -1541,6 +1566,11 @@ async def api_admin_update_settings(
 
         if "facebook_url" in body:
             _upsert_setting(db, "facebook_url", str(body["facebook_url"] or "").strip())
+
+        if "demo_mode" in body:
+            val = "true" if body["demo_mode"] else "false"
+            _upsert_setting(db, "demo_mode", val)
+            _upsert_setting(db, "demo_mode_admin_override", val)
 
         if "section_headings" in body and isinstance(body["section_headings"], dict):
             merged = dict(current["section_headings"])
@@ -1742,7 +1772,7 @@ async def api_admin_update_batch(
         db.execute(
             """
             UPDATE batches
-            SET class_name = ?, stream = ?, branch_id = ?, start_date = ?, timings = ?, status = ?, active = ?
+            SET class_name = ?, stream = ?, branch_id = ?, start_date = ?, timings = ?, status = ?, active = ?, is_sample = 0
             WHERE id = ?
             """,
             (
@@ -1868,7 +1898,7 @@ async def api_admin_update_branch(
         db.execute(
             """
             UPDATE branches
-            SET name = ?, address = ?, maps_url = ?, phone = ?, whatsapp = ?, is_flagship = ?, active = ?
+            SET name = ?, address = ?, maps_url = ?, phone = ?, whatsapp = ?, is_flagship = ?, active = ?, is_sample = 0
             WHERE id = ?
             """,
             (
@@ -1877,7 +1907,7 @@ async def api_admin_update_branch(
                 maps_url,
                 phone,
                 whatsapp,
-                1 if is_flagship else int(existing["is_flagship"]),
+                1 if is_flagship else 0,
                 1 if body.get("active", existing["active"]) else 0,
                 branch_id,
             ),
@@ -1990,7 +2020,7 @@ async def api_admin_update_testimonial(
         db.execute(
             """
             UPDATE testimonials
-            SET quote = ?, name = ?, role = ?, class_year = ?, photo_url = ?, visible = ?
+            SET quote = ?, name = ?, role = ?, class_year = ?, photo_url = ?, visible = ?, is_sample = 0
             WHERE id = ?
             """,
             (
@@ -2091,7 +2121,7 @@ async def api_admin_update_gallery(
         if existing["image_url"] and new_url != existing["image_url"]:
             delete_blob_by_url(db, existing["image_url"])
         db.execute(
-            "UPDATE gallery_images SET image_url = ?, caption = ?, visible = ? WHERE id = ?",
+            "UPDATE gallery_images SET image_url = ?, caption = ?, visible = ?, is_sample = 0 WHERE id = ?",
             (new_url, caption, 1 if body.get("visible", existing["visible"]) else 0, gallery_id),
         )
         return {"ok": True}
@@ -2258,7 +2288,7 @@ ROUTE_SEO: dict[str, tuple[str, str]] = {
         "Join Shikshanama (शिक्षाNama) in West Patel Nagar, New Delhi for Class 6–10 Foundation & Class 11–12 Science, Commerce, and Humanities. Explore our Hall of Fame and book a Free Demo Class.",
     ),
     "/results": (
-        "Hall of Fame · नतीजे जो बोलते हैं | Shikshanama (शिक्षाNama) Student Results",
+        "Hall of Fame | Shikshanama (शिक्षाNama) Student Results",
         "Filter Shikshanama toppers and distinction holders by Class (10th, 12th), Stream (Science, Commerce, Humanities, Foundation), and Academic Year.",
     ),
     "/courses": (
@@ -2266,15 +2296,15 @@ ROUTE_SEO: dict[str, tuple[str, str]] = {
         "Explore Foundation, Science, Commerce, and Humanities courses and live upcoming batch schedules at Shikshanama West Patel Nagar.",
     ),
     "/founders": (
-        "Founders & Leadership · अनुभवी गुरुओं का मार्गदर्शन | Shikshanama (शिक्षाNama)",
+        "Founders & Leadership | Shikshanama (शिक्षाNama)",
         "Meet the founders and senior subject mentors leading Shikshanama (शिक्षाNama) in New Delhi.",
     ),
     "/branches": (
-        "Multi-Branch Locator · हमारे सेंटर्स | Shikshanama (शिक्षाNama) West Patel Nagar",
+        "Multi-Branch Locator | Shikshanama (शिक्षाNama) West Patel Nagar",
         "Find directions, phone numbers, and WhatsApp links for Shikshanama's West Patel Nagar flagship center and nearby branches.",
     ),
     "/thank-you": (
-        "Thank You · धन्यवाद | Free Demo Class Request Confirmed - Shikshanama",
+        "Thank You | Free Demo Class Request Confirmed - Shikshanama (शिक्षाNama)",
         "Your Shikshanama (शिक्षाNama) Free Demo Class request has been received.",
     ),
 }
@@ -2388,10 +2418,9 @@ def _render_spa_html(
     ssr_fallback = (
         f"{ticker_html}"
         f'<header><h1>{html.escape(settings["brand_name"])}</h1>'
-        f'<a href="#demo-form">Book a Free Demo Class · फ्री डेमो बुक करें</a>'
+        f'<a href="#demo-form">Book a Free Demo Class</a>'
         f'<a href="{html.escape(settings["global_whatsapp_url"])}">Chat on WhatsApp</a></header>'
-        f'<section id="hall-of-fame"><h2>{html.escape(settings["section_headings"]["results"]["en"])} · '
-        f'{html.escape(settings["section_headings"]["results"]["hi"])}</h2>{results_cards_html}</section>'
+        f'<section id="hall-of-fame"><h2>{html.escape(settings["section_headings"]["results"]["en"])}</h2>{results_cards_html}</section>'
         f'<section id="branches">{branches_html}</section>'
         f'<section id="instagram"><a href="{html.escape(settings["instagram_url"])}" target="_blank" rel="noopener">@{html.escape(settings["instagram_handle"])}</a></section>'
         f'<form id="demo-form" method="post" action="/api/public/leads/form">'
@@ -2401,8 +2430,8 @@ def _render_spa_html(
         f'<input name="stream" required value="Science" />'
         f'<select name="branch_id" required>{branch_options_html}</select>'
         f'<input type="text" name="website_url" style="display:none" tabIndex="-1" autoComplete="off" />'
-        f"<p>We use your number only to contact you about classes. / आपका नंबर सिर्फ़ क्लास की जानकारी के लिए।</p>"
-        f'<button type="submit">Book Free Demo · फ्री डेमो बुक करें</button></form>'
+        f"<p>We use your number only to contact you about classes.</p>"
+        f'<button type="submit">Book Free Demo Class</button></form>'
     )
 
     out_html = template_html.replace("<!--SEO_HEAD-->", seo_tags).replace("<!--SSR_FALLBACK-->", ssr_fallback)
