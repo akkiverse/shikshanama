@@ -27,7 +27,7 @@ from app.database import (
     reset_rate_limit,
     store_blob_bytes,
 )
-from app.imaging import validate_and_inspect_webp
+from app.imaging import process_and_convert_to_webp, validate_and_inspect_webp
 from app.pdf_gen import CONSENT_TEXT_EN, CONSENT_TEXT_HI, CONSENT_TEXT_VERSION, generate_consent_pdf
 from app.security import (
     COOKIE_NAME,
@@ -902,12 +902,12 @@ async def api_admin_upload(
 ) -> dict[str, Any]:
     raw_bytes = await file.read()
     try:
-        info = validate_and_inspect_webp(raw_bytes, kind=kind.strip().lower())
+        webp_bytes, info = process_and_convert_to_webp(raw_bytes, kind=kind.strip().lower())
     except ValueError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     with get_db() as db:
-        url = store_blob_bytes(db, raw_bytes, is_sample=False)
+        url = store_blob_bytes(db, webp_bytes, is_sample=False)
         return {
             "ok": True,
             "url": url,
@@ -2377,6 +2377,11 @@ def _render_spa_html(
         f'<meta property="og:description" content="{html.escape(desc)}" />\n'
         f'<meta property="og:type" content="website" />\n'
         f'<meta property="og:url" content="{html.escape(base_url + clean_path)}" />\n'
+        f'<meta property="og:image" content="{html.escape(base_url)}/og-image.jpg" />\n'
+        f'<meta name="twitter:card" content="summary_large_image" />\n'
+        f'<meta name="twitter:title" content="{html.escape(title)}" />\n'
+        f'<meta name="twitter:description" content="{html.escape(desc)}" />\n'
+        f'<meta name="twitter:image" content="{html.escape(base_url)}/og-image.jpg" />\n'
         f'<script type="application/ld+json">{json_ld}</script>\n'
         f"<script>window.__SHIKSHANAMA_BOOTSTRAP__ = {json.dumps(payload, ensure_ascii=False)};</script>"
     )

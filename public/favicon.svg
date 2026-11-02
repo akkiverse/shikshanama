@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="112" fill="#0B2545"/>
+  <rect x="12" y="12" width="488" height="488" rx="102" fill="none" stroke="#C9A227" stroke-width="16" opacity="0.9"/>
+  <text x="50%" y="55%" text-anchor="middle" dominant-baseline="middle" font-family="'Noto Sans Devanagari', 'ITF Devanagari', 'Devanagari MT', sans-serif" font-weight="bold" font-size="280" fill="#C9A227">शि</text>
+</svg>
