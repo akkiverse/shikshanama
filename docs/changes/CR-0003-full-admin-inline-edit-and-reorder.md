@@ -27,6 +27,9 @@ While FastAPI backend `PUT` and reorder endpoints existed in `app/main.py`, the 
    - **Founders, Testimonials & Gallery:** Inline Edit forms (with image cropper re-crop modal) and `↑`/`↓` reordering.
    - **Leads Inbox:** Filter bar (`Status`, `Branch`) and counsellor notes saved via `PATCH /api/admin/leads/{id}`.
    - **Dashboard:** Direct one-click toggle to switch Demo Sample Mode on/off.
+3. **UI Modern Tech Overhaul & English Language Focus:**
+   - Switched design system from orange to a sleek dark obsidian/slate aesthetic with electric indigo (`#6366f1`) and cyan (`#06b6d4`) glowing accents and modern frosted-glass cards (`styles.css`).
+   - Cleaned all page body copy and button CTAs to English-only (e.g. "Book Free Demo Class"), preserving Hindi script strictly for the brand name **शिक्षाNama** (`<span className="hi-part">शिक्षा</span>Nama`).
 
 ## Acceptance Criteria Added / Modified
 

@@ -305,13 +305,13 @@ def _pg_ddl(sql: str) -> str:
 
 
 DEFAULT_SECTION_HEADINGS = {
-    "results": {"en": "Hall of Fame", "hi": "नतीजे जो बोलते हैं"},
-    "courses": {"en": "Courses & Streams", "hi": "सही दिशा, पक्की तैयारी"},
-    "batches": {"en": "Live Upcoming Batches", "hi": "नए बैच · सीमित सीटें"},
-    "founders": {"en": "Founders & Mentors", "hi": "अनुभवी गुरुओं का मार्गदर्शन"},
-    "branches": {"en": "Our Branches", "hi": "वेस्ट पटेल नगर और आसपास के सेंटर्स"},
-    "campus": {"en": "Campus Life & Voices", "hi": "क्लासरूम की झलक और स्टूडेंट्स की राय"},
-    "demo": {"en": "Book a Free Demo Class", "hi": "फ्री डेमो और काउंसलिंग सेशन बुक करें"},
+    "results": {"en": "Hall of Fame", "hi": ""},
+    "courses": {"en": "Courses & Streams", "hi": ""},
+    "batches": {"en": "Live Upcoming Batches", "hi": ""},
+    "founders": {"en": "Founders & Mentors", "hi": ""},
+    "branches": {"en": "Our Branches", "hi": ""},
+    "campus": {"en": "Campus Life & Voices", "hi": ""},
+    "demo": {"en": "Book a Free Demo Class", "hi": ""},
 }
 
 
@@ -324,7 +324,7 @@ DEFAULT_SETTINGS: dict[str, str] = {
     "youtube_url": "",
     "facebook_url": "",
     "ticker_enabled": "false",
-    "ticker_text": "Admissions Open 2026-27 · Scholarship Test This Sunday · रजिस्ट्रेशन चालू हैं!",
+    "ticker_text": "Admissions Open 2026-27 · Scholarship Test This Sunday · Book your slot now!",
     "ticker_link": "#demo-form",
     "hero_image_url": "",
     "classes_list": json.dumps(["6", "7", "8", "9", "10", "11", "12"]),

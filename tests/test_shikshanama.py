@@ -689,7 +689,7 @@ def test_ac_19_1_to_19_5_and_22_and_23_seo_jsonld_bundle_and_hinglish(client: Te
     home = client.get("/").text
     assert 'property="og:title"' in home
     assert "EducationalOrganization" in home
-    assert "नतीजे जो बोलते हैं" in home  # AC-22.1 Hinglish accent line
+    assert "शिक्षा" in home  # शिक्षाNama brand in Hindi script
 
     # AC-19.2: Verify compiled public JS bundle is <= 200 KB gzipped and admin is split into a separate chunk
     assets_dir = os.path.join(os.path.dirname(__file__), "..", "app", "static", "dist", "assets")

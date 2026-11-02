@@ -2288,7 +2288,7 @@ ROUTE_SEO: dict[str, tuple[str, str]] = {
         "Join Shikshanama (शिक्षाNama) in West Patel Nagar, New Delhi for Class 6–10 Foundation & Class 11–12 Science, Commerce, and Humanities. Explore our Hall of Fame and book a Free Demo Class.",
     ),
     "/results": (
-        "Hall of Fame · नतीजे जो बोलते हैं | Shikshanama (शिक्षाNama) Student Results",
+        "Hall of Fame | Shikshanama (शिक्षाNama) Student Results",
         "Filter Shikshanama toppers and distinction holders by Class (10th, 12th), Stream (Science, Commerce, Humanities, Foundation), and Academic Year.",
     ),
     "/courses": (
@@ -2296,15 +2296,15 @@ ROUTE_SEO: dict[str, tuple[str, str]] = {
         "Explore Foundation, Science, Commerce, and Humanities courses and live upcoming batch schedules at Shikshanama West Patel Nagar.",
     ),
     "/founders": (
-        "Founders & Leadership · अनुभवी गुरुओं का मार्गदर्शन | Shikshanama (शिक्षाNama)",
+        "Founders & Leadership | Shikshanama (शिक्षाNama)",
         "Meet the founders and senior subject mentors leading Shikshanama (शिक्षाNama) in New Delhi.",
     ),
     "/branches": (
-        "Multi-Branch Locator · हमारे सेंटर्स | Shikshanama (शिक्षाNama) West Patel Nagar",
+        "Multi-Branch Locator | Shikshanama (शिक्षाNama) West Patel Nagar",
         "Find directions, phone numbers, and WhatsApp links for Shikshanama's West Patel Nagar flagship center and nearby branches.",
     ),
     "/thank-you": (
-        "Thank You · धन्यवाद | Free Demo Class Request Confirmed - Shikshanama",
+        "Thank You | Free Demo Class Request Confirmed - Shikshanama (शिक्षाNama)",
         "Your Shikshanama (शिक्षाNama) Free Demo Class request has been received.",
     ),
 }
@@ -2418,10 +2418,9 @@ def _render_spa_html(
     ssr_fallback = (
         f"{ticker_html}"
         f'<header><h1>{html.escape(settings["brand_name"])}</h1>'
-        f'<a href="#demo-form">Book a Free Demo Class · फ्री डेमो बुक करें</a>'
+        f'<a href="#demo-form">Book a Free Demo Class</a>'
         f'<a href="{html.escape(settings["global_whatsapp_url"])}">Chat on WhatsApp</a></header>'
-        f'<section id="hall-of-fame"><h2>{html.escape(settings["section_headings"]["results"]["en"])} · '
-        f'{html.escape(settings["section_headings"]["results"]["hi"])}</h2>{results_cards_html}</section>'
+        f'<section id="hall-of-fame"><h2>{html.escape(settings["section_headings"]["results"]["en"])}</h2>{results_cards_html}</section>'
         f'<section id="branches">{branches_html}</section>'
         f'<section id="instagram"><a href="{html.escape(settings["instagram_url"])}" target="_blank" rel="noopener">@{html.escape(settings["instagram_handle"])}</a></section>'
         f'<form id="demo-form" method="post" action="/api/public/leads/form">'
@@ -2431,8 +2430,8 @@ def _render_spa_html(
         f'<input name="stream" required value="Science" />'
         f'<select name="branch_id" required>{branch_options_html}</select>'
         f'<input type="text" name="website_url" style="display:none" tabIndex="-1" autoComplete="off" />'
-        f"<p>We use your number only to contact you about classes. / आपका नंबर सिर्फ़ क्लास की जानकारी के लिए।</p>"
-        f'<button type="submit">Book Free Demo · फ्री डेमो बुक करें</button></form>'
+        f"<p>We use your number only to contact you about classes.</p>"
+        f'<button type="submit">Book Free Demo Class</button></form>'
     )
 
     out_html = template_html.replace("<!--SEO_HEAD-->", seo_tags).replace("<!--SSR_FALLBACK-->", ssr_fallback)
